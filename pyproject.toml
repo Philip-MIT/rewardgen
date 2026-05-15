@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "roboreason"
+version = "0.1.4.3"
+description = "Roboreason package"
+readme = "README.md"
+requires-python = ">=3.8"
+
+authors = [
+    { name = "Philip" }
+]
+
+dependencies = [
+    # --- FORCE WORKING TORCH STACK ---
+    "torch==2.9.0",
+    "torchvision==0.24.0",
+    "torchaudio==2.9.0",
+
+    # Core ML stack
+    "transformers==4.57.3",
+    "vllm==0.12.0",
+    "unsloth>=2025.10",
+
+    "wandb>=0.19.1",
+    "pillow",
+    "accelerate>=1.2.1",
+    "qwen_vl_utils",
+    "datasets>=3.2.0",
+    "trl",
+    "imageio",
+    "matplotlib",
+    "av>=15.0.0,<16.0.0",
+
+    # General utilities
+    "openai",
+    "google-genai",
+
+    # Robometer
+    "omegaconf>=2.3.0",
+    "hydra-core",
+    "tensorboard",
+    "peft",
+    "codetiming>=1.4.0",
+    "sentence-transformers>=2.0.0",
+    # "decord>=0.6.0",
+
+    "lerobot>=0.4.4",
+]
+
+
+# Optional dependency groups
+[project.optional-dependencies]
+video = [
+    "decord>=0.6.0"
+]
+
+
+# -------------------------
+# setuptools config
+# -------------------------
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["roboreason*"]
+
+# -------------------------
+# UV-specific config
+# -------------------------
+[tool.uv]
+
+# This allows PyTorch CUDA wheels
+extra-index-url = [
+    "https://download.pytorch.org/whl/cu129"
+]
+

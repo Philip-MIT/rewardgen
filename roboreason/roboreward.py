@@ -1,4 +1,3 @@
-
 """
 RoboReward: General-purpose vision-language reward model for robotics.
 

@@ -1,4 +1,3 @@
-
 import os
 import json
 import logging
@@ -57,7 +56,7 @@ replacements = {
 }
 
 
-def gemini(client, model, task_description_i, frame_list, try_count_max=3):
+def gemini(client, model, task_description_i, frame_list, try_count_max=3, verbose=False):
     from google.genai import types
     # 
     # image_file_num_list_idx = list(range(1,len(frame_list)))
@@ -110,12 +109,14 @@ def gemini(client, model, task_description_i, frame_list, try_count_max=3):
                 prompt_list.append(messages_content[0])
                 break
             except Exception as e:
-                print(f"\nError: {e}")
+                if verbose:
+                    print(f"\nError: {e}")
                 try_count += 1
                 if 'quota' in str(e).lower():
                     import time
                     time.sleep(1*60)
-                print(f'Response: {response_text}')
+                if verbose:
+                    print(f'Response: {response_text}')
         # 
         if try_count >= try_count_max:
             response_text_list.append('')
@@ -129,18 +130,19 @@ def gemini(client, model, task_description_i, frame_list, try_count_max=3):
             else:
                 prompt_list.append('')
         # 
-        print('\n\n*******************************************************************************')
-        print(prompt_list[-1])
-        print('\n----------------- Response -----------------')
-        print(response_text_list[-1])
-        print(progress_list[-1])
+        if verbose:
+            # print('\n\n*******************************************************************************')
+            # print(prompt_list[-1])
+            print(f'\n----------------- Timestep {current_idx} -----------------')
+            print(response_text_list[-1])
+            print(progress_list[-1])
     # 
     return progress_list, response_text_list, prompt_list
 
 
 
 
-def gpt(client, model, task_description_i, frame_list, try_count_max=3):
+def gpt(client, model, task_description_i, frame_list, try_count_max=3, verbose=False):
     # image_file_num_list_idx = list(range(1,len(frame_list)))
     # 
     current_progress = 0
@@ -177,12 +179,14 @@ def gpt(client, model, task_description_i, frame_list, try_count_max=3):
                 prompt_list.append(messages_content[0])
                 break
             except Exception as e:
-                print(f"\nError: {e}")
+                if verbose:
+                    print(f"\nError: {e}")
                 try_count += 1
                 if 'quota' in str(e).lower():
                     import time
                     time.sleep(1*60)
-                print(f'Response: {response_text}')
+                if verbose:
+                    print(f'Response: {response_text}')
         # 
         if try_count >= try_count_max:
             response_text_list.append('')
@@ -196,18 +200,20 @@ def gpt(client, model, task_description_i, frame_list, try_count_max=3):
             else:
                 prompt_list.append('')
         # 
-        print('\n\n*******************************************************************************')
-        print(prompt_list[-1])
-        print('\n----------------- Response -----------------')
-        print(response_text_list[-1])
-        print(progress_list[-1])
+        if verbose:
+            # print('\n\n*******************************************************************************')
+            # print(prompt_list[-1])
+            # print('\n----------------- Response -----------------')
+            print(f'\n----------------- Timestep {current_idx} -----------------')
+            print(response_text_list[-1])
+            print(progress_list[-1])
     # 
     return progress_list, response_text_list, prompt_list
 
 
 
 
-def api_models(model, video, task_description, key, view_type_per_video=None, context_window = ['current', 'previous', 'first']):
+def api_models(model, video, task_description, key, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False):
     # 
     if 'gpt' in model:
         from openai import OpenAI
@@ -227,9 +233,9 @@ def api_models(model, video, task_description, key, view_type_per_video=None, co
     video_base64 = [image_to_base64(frame) for frame in video]
     # 
     if 'gpt' in model:
-        progress_list, response_text_list, prompt_list = gpt(client, model, task_description, video_base64)
+        progress_list, response_text_list, prompt_list = gpt(client, model, task_description, video_base64, verbose=verbose)
     else:
-        progress_list, response_text_list, prompt_list = gemini(client, model, task_description, video_base64)
+        progress_list, response_text_list, prompt_list = gemini(client, model, task_description, video_base64, verbose=verbose)
     # 
     # assuming no reasoning or progress prediction at first timestep
     response_text_list = [''] + response_text_list

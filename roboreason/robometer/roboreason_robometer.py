@@ -92,7 +92,7 @@ def load_model(model_path):
     global reward_model, tokenizer, processor, exp_config
     if reward_model is None:
         # unload_sole()   
-        print("Loading Robometer model ...")
+        print("\nLoading Robometer model ...")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # 
         exp_config, tokenizer, processor, reward_model = load_model_from_hf(
@@ -163,7 +163,7 @@ def compute_rewards_per_frame_local(
         or getattr(exp_config.model, "progress_discrete_bins", 10)
     )
     if verbose:
-        print("Running Robometer inference.")
+        print("\nRunning Robometer inference.")
         results = compute_batch_outputs(
             reward_model,
             tokenizer,

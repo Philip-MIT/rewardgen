@@ -1,4 +1,3 @@
-
 """
 VLM backends for RewardScope.
 
@@ -402,7 +401,7 @@ def topreward(
     # Convenience params — used to create a backend when none is supplied
     # backend_name: str = "qwen",
     # model: str | None = None,
-    verbose: bool = True,
+    verbose: bool = False,
     model_path: str = None,
 ) -> dict:
     """Compute TOPReward progress estimates for a video trajectory.

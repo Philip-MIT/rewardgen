@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roboreason"
-version = "0.1.4.3"
+version = "0.1.4.5"
 description = "Roboreason package"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -45,17 +45,17 @@ dependencies = [
     "peft",
     "codetiming>=1.4.0",
     "sentence-transformers>=2.0.0",
-    # "decord>=0.6.0",
+    "decord>=0.6.0",
 
     "lerobot>=0.4.4",
 ]
 
 
 # Optional dependency groups
-[project.optional-dependencies]
-video = [
-    "decord>=0.6.0"
-]
+# [project.optional-dependencies]
+# video = [
+#    "decord>=0.6.0"
+# ]
 
 
 # -------------------------

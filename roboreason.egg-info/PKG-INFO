@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: roboreason
-Version: 0.1.4.3
+Version: 0.1.4.4
 Summary: Roboreason package
 Author: Philip
 Requires-Python: >=3.8
@@ -28,9 +28,8 @@ Requires-Dist: tensorboard
 Requires-Dist: peft
 Requires-Dist: codetiming>=1.4.0
 Requires-Dist: sentence-transformers>=2.0.0
+Requires-Dist: decord>=0.6.0
 Requires-Dist: lerobot>=0.4.4
-Provides-Extra: video
-Requires-Dist: decord>=0.6.0; extra == "video"
 
 
 <div align="center">

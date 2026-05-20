@@ -21,7 +21,5 @@ tensorboard
 peft
 codetiming>=1.4.0
 sentence-transformers>=2.0.0
-lerobot>=0.4.4
-
-[video]
 decord>=0.6.0
+lerobot>=0.4.4

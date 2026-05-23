@@ -65,19 +65,19 @@ def generate(
             # if not 'gpt' in model and not 'gemini' in model:
             print(f"Unloading previous model {CURRENT_MODEL} from GPU to free up memory...\n")
         # 
-        if CURRENT_MODEL == "robometer":
+        if CURRENT_MODEL.lower() == 'robometer':
             from roboreason.robometer.roboreason_robometer import unload_model as unload_robometer
             unload_robometer()
         # 
-        elif CURRENT_MODEL == "sole-r1":
+        elif CURRENT_MODEL.lower() == 'sole-r1':
             from roboreason.sole import unload_model as unload_sole
             unload_sole()
         # 
-        elif CURRENT_MODEL == "roboreward":
+        elif CURRENT_MODEL.lower() == "roboreward":
             from roboreason.roboreward import unload_model as unload_roboreward
             unload_roboreward()
         # 
-        elif CURRENT_MODEL == "topreward":
+        elif CURRENT_MODEL.lower() == "topreward":
             from roboreason.topreward import unload_model as unload_topreward
             unload_topreward()
         import gc
@@ -88,7 +88,7 @@ def generate(
     # 
     CURRENT_MODEL = model
     # 
-    if 'gpt' in model or 'gemini' in model:
+    if 'gpt' in model.lower() or 'gemini' in model.lower():
         assert key is not None, 'API key must be provided for OpenAI and Google models'
     # 
     single_video = False
@@ -226,7 +226,7 @@ def generate(
         downsample_idx_list_list.append(downsample_idx_list.tolist())
     # 
     # 
-    if not model in ['sole-r1']:
+    if not model.lower() == "sole-r1":
         frame_height, frame_width = downsampled_videos[0][0].shape[:2]
         if video_path is not None and 'test_videos' in video_path:
             if frame_width == 2*frame_height:
@@ -242,7 +242,7 @@ def generate(
     rewards = None
     full_rewards = None
     full_reasoning_traces = None
-    if 'gpt' in model or 'gemini' in model:
+    if 'gpt' in model.lower() or 'gemini' in model.lower():
         # 
         from roboreason.api_models import api_models
         rewards = []
@@ -250,11 +250,11 @@ def generate(
         for video_idx in range(len(downsampled_videos)):
             if verbose: 
                 print(f"Generating rewards for video {video_idx+1}/{len(downsampled_videos)} using {model}...")
-            rewards_video_i, reasoning_traces_video_i = api_models(model, downsampled_videos[video_idx], task_description, key, verbose=verbose)
+            rewards_video_i, reasoning_traces_video_i = api_models(model.lower(), downsampled_videos[video_idx], task_description, key, verbose=verbose)
             rewards.append(rewards_video_i)
             reasoning_traces.append(reasoning_traces_video_i)
         # 
-    elif model in ['sole-r1']: 
+    elif model.lower() == 'sole-r1': 
         from roboreason.sole import sole
         # from sole import load_model
         # load_model()
@@ -279,7 +279,7 @@ def generate(
             rewards += rewards_chunk
             reasoning_traces += reasoning_traces_chunk
         # 
-    elif model in ['topreward']:
+    elif model.lower() == 'topreward':
         from roboreason.topreward import topreward
         rewards = []
         for video_idx in range(len(downsampled_videos)):
@@ -288,7 +288,7 @@ def generate(
             rewards_video_i = topreward(downsampled_videos[video_idx], task_description, verbose=verbose, model_path=model_path)
             rewards.append(rewards_video_i)
     # 
-    elif model in ['roboreward']:
+    elif model.lower() == 'roboreward':
         from roboreason.roboreward import roboreward, RoboRewardModel
         rewards = []
         for video_idx in range(len(downsampled_videos)):
@@ -300,7 +300,7 @@ def generate(
                 rewards_video_i = roboreward(downsampled_videos[video_idx], task_description, verbose=verbose, model=RoboRewardModel(model_name=model_path))
             rewards.append(rewards_video_i)
     # 
-    elif model in ['robometer']:
+    elif model.lower() == 'robometer':
         from roboreason.robometer.roboreason_robometer import robometer
         # 
         rewards = []
@@ -393,7 +393,7 @@ def extract_annotation(lerobot_dataset, model, annotation_version=None, annotati
     current_episode = []
     episode_id = 0
     step_counter = 0
-    reward_column_name = f"rewards_{model}_{annotation_version}"
+    reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
     rewards_column = df[reward_column_name].values
     # len(rewards_column)
     # 
@@ -495,7 +495,7 @@ def annotate(
     rewards = None
     reasoning_traces = None
     success_probs = None
-    if model in ["roboreward", "topreward"]:
+    if model.lower() in ["roboreward", "topreward"]:
         rewards = generate(
             model=model,  
             task_description=task_description, 
@@ -503,7 +503,7 @@ def annotate(
             view_type=view_type, 
             num_reasoning_frames=num_reasoning_frames,
         )
-    elif model in ["robometer"]:
+    elif model.lower() == "robometer":
         rewards, success_probs = generate(
             model=model,  
             task_description=task_description, 
@@ -511,7 +511,7 @@ def annotate(
             view_type=view_type, 
             num_reasoning_frames=num_reasoning_frames,
         )
-    elif model in ["sole-r1"]:
+    elif model.lower() == "sole-r1":
         rewards, reasoning_traces = generate(
             model=model,  
             task_description=task_description, 
@@ -519,7 +519,7 @@ def annotate(
             view_type=view_type, 
             num_reasoning_frames=num_reasoning_frames,
         )
-    elif "gpt" in model or "gemini" in model:
+    elif "gpt" in model.lower() or "gemini" in model.lower():
         rewards, reasoning_traces = generate(
             model=model,  
             task_description=task_description, 
@@ -535,7 +535,7 @@ def annotate(
     # reward_values = np.random.randn(num_frames, 1).astype(np.float32)
     # reward_values.shape
     # 
-    reward_column_name = f"rewards_{model}_{annotation_version}"
+    reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
     reward_feature_info = {
         "dtype": "float32",
         "shape": (1,),
@@ -620,20 +620,85 @@ def annotate(
 #         frame = cv2.copyMakeBorder(frame, 0, 0, (target-frame_width)//2, (target-frame_width)//2, cv2.BORDER_CONSTANT, value=[255, 255, 255])
 #     return frame
 
-def shape_to_target(frame, target=384):
-    frame_height, frame_width = frame.shape[:2]
-    # Always scale so height = target
-    scale = target / frame_height
-    new_width = int(frame_width * scale)
-    frame = cv2.resize(frame, (new_width, target), interpolation=cv2.INTER_LINEAR)
-    # Optional: pad width if still smaller than target
-    if new_width < target:
-        pad = (target - new_width) // 2
+# def shape_to_target(frame, target=768):
+#     frame_height, frame_width = frame.shape[:2]
+#     # Always scale so height = target
+#     scale = target / frame_height
+#     new_width = int(frame_width * scale)
+#     frame = cv2.resize(frame, (new_width, target), interpolation=cv2.INTER_LINEAR)
+#     # Optional: pad width if still smaller than target
+#     if new_width < target:
+#         pad = (target - new_width) // 2
+#         frame = cv2.copyMakeBorder(
+#             frame, 0, 0, pad, pad,
+#             cv2.BORDER_CONSTANT, value=[255, 255, 255]
+#         )
+#     return frame
+
+
+
+# - If height is below target_height, scale up while preserving aspect ratio,
+#     but do not let width exceed max_width. If width hits max_width first,
+#     pad top/bottom.
+# - If width is below min_width, scale up while preserving aspect ratio,
+#     but do not let height exceed target_height. If height hits target_height
+#     first, pad left/right.
+def resize_and_pad_to_target(
+    frame,
+    target_height=768,
+    min_width=768,
+    max_width=1536,
+    pad_color=(255,255,255)
+):
+    if frame is None or frame.size == 0:
+        raise ValueError("Input frame is empty.")
+    h, w = frame.shape[:2]
+    # Step 1: If height is too small, scale up toward target_height,
+    # but do not allow width to exceed max_width.
+    if h < target_height:
+        scale_to_height = target_height / h
+        scale_to_max_width = max_width / w
+        scale = min(scale_to_height, scale_to_max_width)
+        if scale > 1:
+            new_w = int(round(w * scale))
+            new_h = int(round(h * scale))
+            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+            h, w = frame.shape[:2]
+    # Step 2: If width is too small, scale up toward min_width,
+    # but do not allow height to exceed target_height.
+    if w < min_width:
+        scale_to_width = min_width / w
+        scale_to_target_height = target_height / h
+        scale = min(scale_to_width, scale_to_target_height)
+        if scale > 1:
+            new_w = int(round(w * scale))
+            new_h = int(round(h * scale))
+            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+            h, w = frame.shape[:2]
+    # Step 3: Clamp width if somehow rounding pushed it over max_width.
+    if w > max_width:
+        scale = max_width / w
+        new_w = max_width
+        new_h = int(round(h * scale))
+        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        h, w = frame.shape[:2]
+    # Step 4: Pad to target height and minimum width as needed.
+    pad_top = max((target_height - h) // 2, 0)
+    pad_bottom = max(target_height - h - pad_top, 0)
+    pad_left = max((min_width - w) // 2, 0)
+    pad_right = max(min_width - w - pad_left, 0)
+    if pad_top or pad_bottom or pad_left or pad_right:
         frame = cv2.copyMakeBorder(
-            frame, 0, 0, pad, pad,
-            cv2.BORDER_CONSTANT, value=[255, 255, 255]
+            frame,
+            pad_top,
+            pad_bottom,
+            pad_left,
+            pad_right,
+            borderType=cv2.BORDER_CONSTANT,
+            value=pad_color,
         )
     return frame
+
 
 
 import copy
@@ -731,8 +796,10 @@ def video_plot(outputs, plot_save_path, video_path=None, video_view_external_pat
         #     frame = np.array(frame.convert("RGB"))
         #     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         #
-        target_height = frame.shape[0]
-        frame = shape_to_target(frame, target=target_height)
+        # target_height = frame.shape[0]
+        # frame = shape_to_target(frame, target=target_height)
+        target_height = 768
+        frame = resize_and_pad_to_target(frame, target_height=target_height, min_width=target_height, max_width=target_height*2)
         frame_height, frame_width = frame.shape[:2]
         # 
         # if view_type in ['external and wrist']:
@@ -838,7 +905,8 @@ def video_plot(outputs, plot_save_path, video_path=None, video_view_external_pat
             #     frame = np.array(frame.convert("RGB"))
             #     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             # 
-            frame = shape_to_target(frame, target=target_height)
+            # frame = shape_to_target(frame, target=target_height)
+            frame = resize_and_pad_to_target(frame, target_height=target_height, min_width=target_height, max_width=target_height*2)
             frame_height, frame_width = frame.shape[:2]
             fig.set_size_inches(target_height / fig.dpi, target_height / fig.dpi)  
             fig.tight_layout(pad=0.4)  # Adjust layout to ensure everything fits without being cut off

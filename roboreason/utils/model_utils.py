@@ -1,5 +1,3 @@
-
-
 import os
 from pathlib import Path
 from huggingface_hub import snapshot_download
@@ -11,6 +9,7 @@ MODEL_REGISTRY = {
     "robometer": "robometer/Robometer-4B",
     "topreward": "Qwen/Qwen3-VL-8B-Instruct",
     "sole": "pschro/SOLE-R1-8B",
+    "sole-r1": "pschro/SOLE-R1-8B",
 }
 
 
@@ -33,7 +32,7 @@ def get_model_dir(model_key: str, user_path: str | None = None) -> str:
         return os.environ[env_var]
     # 
     # 3. default cache location
-    model_id = MODEL_REGISTRY[model_key]
+    model_id = MODEL_REGISTRY[model_key.lower()]
     local_dir = DEFAULT_CACHE_DIR / model_id.replace("/", "_")
     # 
     if not local_dir.exists():

@@ -2,4 +2,5 @@ model_checkpoints/
 __pycache__/
 *.py[cod]
 unsloth_compiled_cache/
+model_outputs_tmp/
 

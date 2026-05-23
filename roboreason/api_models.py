@@ -215,10 +215,10 @@ def gpt(client, model, task_description_i, frame_list, try_count_max=3, verbose=
 
 def api_models(model, video, task_description, key, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False):
     # 
-    if 'gpt' in model:
+    if 'gpt' in model.lower():
         from openai import OpenAI
         client = OpenAI(api_key=key)
-    elif 'gemini' in model:
+    elif 'gemini' in model.lower():
         from google import genai
         client = genai.Client(api_key=key)
         # response = client.models.generate_content(model="gemini-3-flash-preview", contents="Explain how AI works in a few words")
@@ -232,10 +232,10 @@ def api_models(model, video, task_description, key, view_type_per_video=None, co
     # 
     video_base64 = [image_to_base64(frame) for frame in video]
     # 
-    if 'gpt' in model:
-        progress_list, response_text_list, prompt_list = gpt(client, model, task_description, video_base64, verbose=verbose)
+    if 'gpt' in model.lower():
+        progress_list, response_text_list, prompt_list = gpt(client, model.lower(), task_description, video_base64, verbose=verbose)
     else:
-        progress_list, response_text_list, prompt_list = gemini(client, model, task_description, video_base64, verbose=verbose)
+        progress_list, response_text_list, prompt_list = gemini(client, model.lower(), task_description, video_base64, verbose=verbose)
     # 
     # assuming no reasoning or progress prediction at first timestep
     response_text_list = [''] + response_text_list

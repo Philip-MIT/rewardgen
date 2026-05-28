@@ -1,11 +1,15 @@
 <div align="center">
 
 
-# RoboReason 
+# RewardGen 
 
-**RoboReason** is a python package that makes it easy to apply any ***reward model*** or ***video-language reasoning model*** to your robot videos.
+**RewardGen** is a python package that makes it easy to apply any ***reward model*** or ***video-language reasoning model*** to your robot videos.
 
 </div>
+
+## Example videos
+
+https://github.com/user-attachments/assets/cd481f28-0cb3-4874-bd50-1ec3ad8326ec
 
 ## Supported Models
 - Robometer (https://robometer.github.io)
@@ -18,11 +22,11 @@
 ## ToDos
 - [ ] Enable fine-tuning of reward models on custom datasets
 
-## 📦 File Structure
+## File Structure
 
 ```
-roboreason/
-├── roboreason/         # Main package
+rewardgen/
+├── rewardgen/         # Main package
 │   ├── robometer/         # Robometer code
 │   ├── sole.py            # SOLE-R1 code
 │   ├── roboreward.py      # RoboReward code
@@ -39,30 +43,25 @@ roboreason/
 ## Install
 ### Option 1: quick pip install
 ```bash
-pip install -U roboreason
+pip install -U rewardgen
 ```
 
 ### Option 2: use [uv](https://github.com/astral-sh/uv) for dependency management
 
-#### 1. Clone the repository:
 ```bash
-git clone https://github.com/philipmit/roboreason
-```
+# 1) Clone the repository
+git clone https://github.com/Philip-MIT/rewardgen
 
-#### 2. Install `uv`
-```bash
+# 2) Install `uv`
 pip install uv
-```
 
-#### 3. Sync environment
-```bash
+# 3) Sync environment
 uv sync
-```
 
-#### 4. Activate environment
-```bash
+# 4) Activate environment
 source .venv/bin/activate
 ```
+
 
 ---
 
@@ -70,26 +69,26 @@ source .venv/bin/activate
 ```bash
 
 # SOLE-R1 (8B) 
-python -c "from roboreason.utils.model_utils import get_model_dir; get_model_dir('sole-r1')"
+python -c "from rewardgen.utils.model_utils import get_model_dir; get_model_dir('sole-r1')"
 
 # Robometer (4B)
-python -c "from roboreason.utils.model_utils import get_model_dir; get_model_dir('robometer')"
+python -c "from rewardgen.utils.model_utils import get_model_dir; get_model_dir('robometer')"
 
 # TOPReward (based on Qwen3-VL-8B)
-python -c "from roboreason.utils.model_utils import get_model_dir; get_model_dir('topreward')"
+python -c "from rewardgen.utils.model_utils import get_model_dir; get_model_dir('topreward')"
 
 # RoboReward (8B)
-python -c "from roboreason.utils.model_utils import get_model_dir; get_model_dir('roboreward')"
+python -c "from rewardgen.utils.model_utils import get_model_dir; get_model_dir('roboreward')"
 
 > **Note:** Robometer is ~8GB. SOLE-R1, RoboReward, and TOPReward are ~17GB each.
 
 ```
-## Optional: Download all test videos and example model outputs from google cloud
+## Optional: Download all test videos and example model outputs
 ```bash
 # 1) Install gcloud: https://cloud.google.com/sdk/docs/install
 
 # 2) Go to target directory
-# cd /path/to/roboreason
+# cd /path/to/rewardgen
 
 # Optional: disable credentials so you don't have to authenticate
 gcloud config set auth/disable_credentials True
@@ -97,7 +96,7 @@ gcloud config set auth/disable_credentials True
 # Download test videos
 gcloud storage cp --recursive gs://roboreason-view-videos-philip/test_videos ./
 
-# Download example model outputs
+# Download model outputs for all test videos
 gcloud storage cp --recursive gs://roboreason-view-videos-philip/model_outputs ./
 
 # Optional: re-enable credentials afterward if you disabled them above.
@@ -108,18 +107,18 @@ gcloud config set auth/disable_credentials False
 ---
 ## Quick start: Example reward generation and plotting
 ```python
-# pip install -U roboreason
-import roboreason as rr
+# pip install -U rewardgen
+from rewardgen import generate, video_plot
 
 video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
 task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = rr.generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external'], verbose=False)
+rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external', verbose=False)
 output_robometer = {"model": "Robometer", "rewards": rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = rr.generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external and wrist'], verbose=False)
+rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist', verbose=False)
 output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
@@ -130,7 +129,7 @@ with open(video_paths[0].replace(".mp4", "/data.json"), 'r') as f:
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
 # Plot
-rr.video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_path = video_paths[0])
+video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_path = video_paths[0], task_description=task_description)
 
 ```
 
@@ -140,13 +139,16 @@ rr.video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_
 ### Robometer
 ```python
 
-import roboreason as rr
+from rewardgen import generate
 
-rewards, success_probs = rr.generate(
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
+
+rewards, success_probs = generate(
     model="Robometer",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external'],
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external',
     verbose=False
 )
 
@@ -155,13 +157,28 @@ rewards, success_probs = rr.generate(
 ### SOLE-R1
 ```python
 
-import roboreason as rr
+from rewardgen import generate
 
-rewards, reasoning_traces = rr.generate(
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
+
+rewards, reasoning_traces = generate(
     model="SOLE-R1",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external and wrist'],
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external and wrist',
+    verbose=False
+)
+
+output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
+
+# Plotting with show_reasoning_traces=True
+video_plot(
+    outputs=[output_sole], 
+    plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
+    video_path=video_paths[0],
+    show_reasoning_traces=True,
+    task_description=task_description,
     verbose=False
 )
 ```
@@ -170,13 +187,16 @@ rewards, reasoning_traces = rr.generate(
 ### TOPReward
 ```python
 
-import roboreason as rr
+from rewardgen import generate
 
-rewards = rr.generate(
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
+
+rewards = generate(
     model="TOPReward",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external'],
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external',
     verbose=False
 )
 
@@ -185,13 +205,16 @@ rewards = rr.generate(
 ### RoboReward
 ```python
 
-import roboreason as rr
+from rewardgen import generate
 
-rewards = rr.generate(
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
+
+rewards = generate(
     model="RoboReward",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external'],
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external',
     verbose=False
 )
 
@@ -200,16 +223,19 @@ rewards = rr.generate(
 ### GPT-5 (and other OpenAI models)
 ```python
 
-import roboreason as rr
+from rewardgen import generate
+
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
 
 # requires OpenAI API key: https://developers.openai.com/api/docs/quickstart
 API_KEY = "..."
 
-rewards, reasoning_traces = rr.generate(
+rewards, reasoning_traces = generate(
     model="GPT-5",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external'], 
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external', 
     key=API_KEY, 
     verbose=False
 )
@@ -218,16 +244,19 @@ rewards, reasoning_traces = rr.generate(
 ### Gemini-3-Pro (and other Google models)
 ```python
 
-import roboreason as rr
+from rewardgen import generate
+
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
 
 # requires Gemini API key: https://ai.google.dev/gemini-api/docs/api-key
 API_KEY = "..."
 
-rewards, reasoning_traces = rr.generate(
+rewards, reasoning_traces = generate(
     model="Gemini-3-Pro-Preview",  
-    task_description="Pick up the cube from the table.", 
-    video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4'], 
-    view_type_per_video=['external'], 
+    task_description=task_description, 
+    video_paths=video_paths, 
+    view_type='external', 
     key=API_KEY,
     verbose=False
 )
@@ -236,14 +265,17 @@ rewards, reasoning_traces = rr.generate(
 ## Video plotting
 ```python
 
-import roboreason as rr
+from rewardgen import generate, video_plot
+
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = rr.generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external'])
+rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external')
 output_robometer = {"model": "Robometer", "rewards": rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = rr.generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external and wrist'])
+rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
 output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
@@ -253,45 +285,46 @@ with open(video_paths[0].replace(".mp4", "/data.json"), 'r') as f:
 
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
-rr.video_plot(
+video_plot(
     outputs=[output_sole, output_robometer], 
     plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
-    video_path = 'test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4',
+    video_path=video_paths[0],
+    task_description=task_description,
     verbose=False
 )
 ```
 
-## Inference and plotting across multiple videos
+## Reward generation and plotting across many videos
 ```python
 
-import roboreason as rr
+from rewardgen import generate
 import glob
 import json
 
 video_paths = glob.glob('test_videos/robosuite/lift/unsuccessful/*')
+task_description="Pick up the cube from the table."
 
-## INFERENCE
-
+## REWARD GENERATION
 # Robometer for all videos
-rewards_robometer, success_probs_robometer = rr.generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external'])
+rewards_robometer, success_probs_robometer = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external')
 # SOLE-R1 for all videos
-rewards_sole, reasoning_traces_sole = rr.generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type_per_video=['external and wrist'])
-
+rewards_sole, reasoning_traces_sole = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
 
 ## PLOTTING
-plot_save_dir = 'model_outputs/'
+plot_save_dir = 'model_outputs/combined'
 for video_idx in range(len(video_paths)):
     output_robometer = {"model": "Robometer", "rewards": rewards_robometer[video_idx]}
     output_sole = {"model": "SOLE-R1", "rewards": rewards_sole[video_idx]}
     # Optional: Ground-truth rewards (available for test videos from sim environments)
-    with open(video_paths[0].replace(".mp4", "/data.json"), 'r') as f:
+    with open(video_paths[video_idx].replace(".mp4", "/data.json"), 'r') as f:
         data = json.load(f)
     
     output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
-    rr.video_plot(
-        outputs = [output_sole, output_robometer], 
+    video_plot(
+        outputs = [output_groundtruth, output_sole, output_robometer], 
         plot_save_path = plot_save_dir + video_paths[video_idx].split('test_videos/')[-1] , 
         video_path = video_paths[video_idx],
+        task_description=task_description,
         verbose = False
     )
 ```
@@ -301,7 +334,7 @@ for video_idx in range(len(video_paths)):
 ---
 
 
-## rr.generate
+## generate
 
 | Argument              | Type        | Required | Description                                                                                                                                    |
 | --------------------- | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -319,11 +352,11 @@ for video_idx in range(len(video_paths)):
 | TOPReward / RoboReward | `rewards`                   |
 
 
-## rr.video_plot
+## video_plot
 
 | Argument                | Type         | Required | Description                                                                               |
 | ----------------------- | ------------ | -------- | ----------------------------------------------------------------------------------------- |
-| `outputs`               | `List[dict]` | ❌*       | List of model outputs (e.g., from `rr.generate`) to visualize together.                   |
+| `outputs`               | `List[dict]` | ❌*       | List of model outputs (e.g., from `generate`) to visualize together.                   |
 | `plot_save_path`        | `str`        | ❌        | Path where the output video with overlays will be saved.                                  |
 | `video_path`            | `str`        | ❌        | Path to the original video file being visualized.                                         |
 | `view_type`             | `str`        | ❌        | View type used for visualization (e.g., `"external"`, `"wrist"`, `"external and wrist"`). |
@@ -341,10 +374,11 @@ for video_idx in range(len(video_paths)):
 
 ---
 ## Acknowledgements
-RoboReason builds upon the following repos: 
+RewardGen builds upon the following repos: 
 - RewardScope (https://github.com/philfung/reward-scope)
 - Robometer (https://github.com/robometer/robometer)
 - TOPReward (https://github.com/TOPReward/TOPReward)
 
+Also thank you to [Jack Vial](https://github.com/jackvial) for the SO-101 videos.
 
 

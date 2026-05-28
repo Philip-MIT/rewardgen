@@ -3,7 +3,7 @@
 
 # RewardGen 
 
-**RewardGen** is a python package that makes it easy to apply any ***reward model*** or ***video-language reasoning model*** to your robot videos.
+**RewardGen** is a python package that makes it easy to apply any ***reward model*** to your robot videos.
 
 </div>
 

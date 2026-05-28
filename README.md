@@ -9,7 +9,9 @@
 
 ## Example videos
 
-https://github.com/user-attachments/assets/cd481f28-0cb3-4874-bd50-1ec3ad8326ec
+<!-- https://github.com/user-attachments/assets/cd481f28-0cb3-4874-bd50-1ec3ad8326ec -->
+https://github.com/user-attachments/assets/3c444096-d3dd-47c7-b09d-90b0756d0f72
+
 
 ## Supported Models
 - Robometer (https://robometer.github.io)

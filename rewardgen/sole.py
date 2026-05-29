@@ -634,7 +634,7 @@ temperature_ = 1.0
 
 
 def load_model(model_path: str = None, verbose=False):
-    from roboreason.utils.model_utils import get_model_dir
+    from rewardgen.utils.model_utils import get_model_dir
     # 
     if model_path is None:
         model_path = get_model_dir("sole")

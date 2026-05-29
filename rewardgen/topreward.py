@@ -428,7 +428,7 @@ def topreward(
             frame_indices:       list[int]    — 0-based prefix endpoint indices
         }
     """
-    from roboreason.utils.model_utils import get_model_dir
+    from rewardgen.utils.model_utils import get_model_dir
     if model_path is None:
         model_path = get_model_dir("topreward")
     # 

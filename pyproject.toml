@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rewardgen"
-version = "0.1.0.5"
+version = "0.1.0.6"
 description = "RewardGen package"
 readme = "README.md"
 # requires-python = ">=3.8"
@@ -72,7 +72,17 @@ include = ["rewardgen*"]
 [tool.uv]
 
 # This allows PyTorch CUDA wheels
-extra-index-url = [
-    "https://download.pytorch.org/whl/cu129"
-]
+# extra-index-url = [
+#     "https://download.pytorch.org/whl/cu129"
+# ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 

@@ -1,9 +1,9 @@
 Metadata-Version: 2.4
 Name: rewardgen
-Version: 0.1.0.0
+Version: 0.1.0.1
 Summary: RewardGen package
 Author: Philip
-Requires-Python: >=3.8
+Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: torch==2.9.0
 Requires-Dist: torchvision==0.24.0

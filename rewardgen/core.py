@@ -755,10 +755,10 @@ def video_plot(outputs, plot_save_path, video_path=None, video_view_external_pat
     # 
     if video_frames is None:
         if video_path is None and video_view_external_path is not None and video_view_wrist_path is not None:
-            frames_external = load_video_frames(video_view_external_path[video_idx])
-            frames_wrist = load_video_frames(video_view_wrist_path[video_idx])
+            frames_external = load_video_frames(video_view_external_path)
+            frames_wrist = load_video_frames(video_view_wrist_path)
             if not len(frames_external) == len(frames_wrist):
-                raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
+                raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)}")
             frame_list = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
             view_type = 'external and wrist'
         else:

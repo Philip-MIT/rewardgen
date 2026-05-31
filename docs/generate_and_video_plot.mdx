@@ -1,0 +1,64 @@
+
+## `generate`
+
+| Argument                    | Type        | Required | Description                                                                                                                                                                                 |
+| --------------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`                     | `str`       | ✅        | Name of the model to use. Options include: `"Robometer"`, `"SOLE-R1"`, `"TOPReward"`, `"RoboReward"`, OpenAI models such as `"GPT-5"`, and Google models such as `"Gemini-3-Pro-Preview"`.  |
+| `task_description`          | `str`       | ✅        | Natural language description of the robot task.                                                                                                                                             |
+| `video_paths`               | `list[str]` | ❌*       | Paths to one or more input videos. Use this for batch reward generation from video files.                                                                                                   |
+| `video_path`                | `str`       | ❌*       | Path to a single input video. Convenience alternative to `video_paths=[video_path]`.                                                                                                        |
+| `video_view_external_paths` | `list[str]` | ❌*       | Paths to external-view videos. If provided together with `video_view_wrist_paths`, corresponding videos are concatenated side-by-side frame-by-frame and treated as `"external and wrist"`. |
+| `video_view_wrist_paths`    | `list[str]` | ❌*       | Paths to wrist-view videos. If provided together with `video_view_external_paths`, corresponding videos are concatenated side-by-side frame-by-frame and treated as `"external and wrist"`. |
+| `video_view_external_path`  | `str`       | ❌*       | Path to a single external-view video. Convenience alternative to `video_view_external_paths=[video_view_external_path]`.                                                                    |
+| `video_view_wrist_path`     | `str`       | ❌*       | Path to a single wrist-view video. Convenience alternative to `video_view_wrist_paths=[video_view_wrist_path]`.                                                                             |
+| `video_frames`              | `list`      | ❌*       | Raw video frames instead of file paths. Can be a single list of frames for one video, or a list of frame lists for multiple videos.                                                         |
+| `video_frames_external`     | `list`      | ❌*       | Raw external-view frames. If provided together with `video_frames_wrist`, corresponding frames are concatenated side-by-side and treated as `"external and wrist"`.                         |
+| `video_frames_wrist`        | `list`      | ❌*       | Raw wrist-view frames. If provided together with `video_frames_external`, corresponding frames are concatenated side-by-side and treated as `"external and wrist"`.                         |
+| `view_type_per_video`       | `list[str]` | ❌        | Camera view label for each video, e.g. `"external"`, `"wrist"`, or `"external and wrist"`. If omitted and `view_type` is provided, it is expanded automatically across videos.              |
+| `view_type`                 | `str`       | ❌        | Camera view label to use for all videos, e.g. `"external"`, `"wrist"`, or `"external and wrist"`.                                                                                           |
+| `num_reasoning_frames`      | `int`       | ❌        | Number of frames sampled from each video for model reasoning. Default: `10`. Rewards are interpolated back to all video frames.                                                             |
+| `context_window`            | `str`       | ❌        | Reserved/accepted argument for context-window configuration.                                                                                                                                |
+| `key`                       | `str`       | ❌**      | API key required for OpenAI and Google models. Not needed for local models.                                                                                                                 |
+| `model_path`                | `str`       | ❌        | Optional local model checkpoint/path override.                                                                                                                                              |
+| `verbose`                   | `bool`      | ❌        | Whether to print progress messages. Default: `True`.                                                                                                                                        |
+| `max_batch_size`            | `int`       | ❌        | Maximum batch size used when running SOLE-R1 across many videos. Default: `5`.                                                                                                              |
+
+* Provide at least one video input source: `video_paths`, `video_path`, external/wrist video path arguments, `video_frames`, or external/wrist frame arguments.
+
+** Required only for API-based models such as OpenAI and Gemini models.
+
+| Model Type             | Return Values               |
+| ---------------------- | --------------------------- |
+| SOLE-R1 / GPT / Gemini | `rewards, reasoning_traces` |
+| Robometer              | `rewards, success_probs`    |
+| TOPReward / RoboReward | `rewards`                   |
+
+For a single-video input, return values are for that video directly. For multi-video inputs, return values are lists indexed by video.
+
+## `video_plot`
+
+| Argument                   | Type             | Required | Description                                                                                                                                                                               |
+| -------------------------- | ---------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outputs`                  | `list[dict]`     | ✅        | List of output dictionaries to visualize. Each output should include `"model"` and `"rewards"`, and may include `"reasoning_traces"`. Up to 7 outputs are supported.                      |
+| `plot_save_path`           | `str`            | ✅        | Path where the output video should be saved. If an `.mp4` path is provided, an intermediate `.avi` is written and then converted to `.mp4`.                                               |
+| `video_path`               | `str`            | ❌*       | Path to the original video to visualize.                                                                                                                                                  |
+| `video_view_external_path` | `str`            | ❌*       | Path to an external-view video. If provided together with `video_view_wrist_path`, frames are concatenated side-by-side and visualized as `"external and wrist"`.                         |
+| `video_view_wrist_path`    | `str`            | ❌*       | Path to a wrist-view video. If provided together with `video_view_external_path`, frames are concatenated side-by-side and visualized as `"external and wrist"`.                          |
+| `video_frames`             | `list`           | ❌*       | Raw frames to visualize instead of loading frames from a video path.                                                                                                                      |
+| `view_type`                | `str`            | ❌        | Camera view label used for visualization, e.g. `"external"`, `"wrist"`, or `"external and wrist"`. This may be inferred when using `video_view_external_path` or `video_view_wrist_path`. |
+| `task_description`         | `str`            | ❌        | Optional task description displayed in a top bar above the video.                                                                                                                         |
+| `show_all_frames`          | `bool`           | ❌        | If `False` and reasoning traces are shown, only frames with non-empty reasoning traces are rendered. Default: `False`.                                                                    |
+| `fps_`                     | `int` or `float` | ❌        | Frames per second for the output visualization video. Default: `2`.                                                                                                                       |
+| `wrap_width`               | `int`            | ❌        | Approximate text wrapping width for reasoning traces. Default: `26`.                                                                                                                      |
+| `font_scale`               | `int` or `float` | ❌        | Font scale used for reasoning trace text. Default: `1`.                                                                                                                                   |
+| `font_height`              | `int`            | ❌        | Vertical spacing between lines of reasoning trace text. Default: `30`.                                                                                                                    |
+| `text_thickness`           | `int`            | ❌        | Thickness of reasoning trace text. Default: `2`.                                                                                                                                          |
+| `line_type`                | `int`            | ❌        | OpenCV line type used for text rendering. Default: `2`.                                                                                                                                   |
+| `show_reasoning_traces`    | `bool`           | ❌        | Whether to show reasoning traces in the output video. Default: `True`. Reasoning traces are shown only when exactly one output contains non-empty `"reasoning_traces"`.                   |
+| `cfg`                      | `Any`            | ❌        | Reserved/accepted argument for future configuration.                                                                                                                                      |
+| `env_rew_lab`              | `str`            | ❌        | Reserved/accepted label for environment reward naming. Default: `"Ground-truth reward"`.                                                                                                  |
+| `save_json`                | `bool`           | ❌        | Whether to save the `outputs` list as a `.json` file next to the output video. Default: `True`.                                                                                           |
+| `verbose`                  | `bool`           | ❌        | Whether to print progress/debug messages. Default: `False`.                                                                                                                               |
+
+* Provide one video source for visualization: `video_path`, both `video_view_external_path` and `video_view_wrist_path`, either single-view path argument, or `video_frames`.
+

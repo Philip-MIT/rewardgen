@@ -3,7 +3,7 @@
 
 # RewardGen 
 
-**RewardGen** is a python package that makes it easy to apply any ***reward model*** to your robot videos and plot them as shown below.
+**RewardGen** is a python package that makes it easy to apply any ***reward model*** to your robot videos and plot the rewards as shown below.
 (All example videos at: https://philip-mit.github.io/rewardgen_view/)
 
 </div>
@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/3c444096-d3dd-47c7-b09d-90b0756d0f72
 - Google models (e.g., `"Gemini-3-Pro-Preview"`)
 
 ## ToDos
-- [ ] Enable fine-tuning of reward models on custom datasets
+- [ ] Enable fine-tuning of reward models on new datasets/demonstrations
 
 ## File Structure
 
@@ -113,26 +113,27 @@ gcloud config set auth/disable_credentials False
 # pip install -U rewardgen
 from rewardgen import generate, video_plot
 
-video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_view_external_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
 task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external', verbose=False)
+rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
 output_robometer = {"model": "Robometer", "rewards": rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist', verbose=False)
+rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
 output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
 import json
-with open(video_paths[0].replace(".mp4", "/data.json"), 'r') as f:
+with open('test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/data.json', 'r') as f:
     data = json.load(f)
 
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
 # Plot
-video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_path = video_paths[0], task_description=task_description)
+video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs_tmp/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_view_external_path=video_view_external_paths[0], video_view_wrist_path=video_view_wrist_paths[0], task_description=task_description)
 
 ```
 
@@ -144,14 +145,14 @@ video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_sav
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
 rewards, success_probs = generate(
     model="Robometer",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external',
+    view_type="external",
     verbose=False
 )
 
@@ -192,7 +193,7 @@ video_plot(
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
 rewards = generate(
@@ -210,7 +211,7 @@ rewards = generate(
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
 rewards = generate(
@@ -228,7 +229,7 @@ rewards = generate(
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
 # requires OpenAI API key: https://developers.openai.com/api/docs/quickstart
@@ -249,7 +250,7 @@ rewards, reasoning_traces = generate(
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
 # requires Gemini API key: https://ai.google.dev/gemini-api/docs/api-key
@@ -270,28 +271,30 @@ rewards, reasoning_traces = generate(
 
 from rewardgen import generate, video_plot
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+video_view_external_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
 task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external')
+rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
 output_robometer = {"model": "Robometer", "rewards": rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
+rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
 output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
 import json
-with open(video_paths[0].replace(".mp4", "/data.json"), 'r') as f:
+with open('test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/data.json', 'r') as f:
     data = json.load(f)
 
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
 video_plot(
-    outputs=[output_sole, output_robometer], 
+    outputs=[output_groundtruth, output_sole, output_robometer], 
     plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
-    video_path=video_paths[0],
+    video_view_external_path=video_view_external_paths[0], 
+    video_view_wrist_path=video_view_wrist_paths[0],
     task_description=task_description,
     verbose=False
 )
@@ -304,19 +307,16 @@ from rewardgen import generate
 import glob
 import json
 
-video_paths = glob.glob('test_videos/robosuite/lift/unsuccessful/*')
+video_paths = glob.glob('test_videos/robosuite/lift/unsuccessful/*.mp4')
 task_description="Pick up the cube from the table."
 
 ## REWARD GENERATION
-# Robometer for all videos
-rewards_robometer, success_probs_robometer = generate(model="Robometer",  task_description=task_description, video_paths=video_paths, view_type='external')
 # SOLE-R1 for all videos
 rewards_sole, reasoning_traces_sole = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
 
 ## PLOTTING
-plot_save_dir = 'model_outputs/combined'
+plot_save_dir = 'model_outputs_tmp/combined'
 for video_idx in range(len(video_paths)):
-    output_robometer = {"model": "Robometer", "rewards": rewards_robometer[video_idx]}
     output_sole = {"model": "SOLE-R1", "rewards": rewards_sole[video_idx]}
     # Optional: Ground-truth rewards (available for test videos from sim environments)
     with open(video_paths[video_idx].replace(".mp4", "/data.json"), 'r') as f:
@@ -324,7 +324,7 @@ for video_idx in range(len(video_paths)):
     
     output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
     video_plot(
-        outputs = [output_groundtruth, output_sole, output_robometer], 
+        outputs = [output_groundtruth, output_sole], 
         plot_save_path = plot_save_dir + video_paths[video_idx].split('test_videos/')[-1] , 
         video_path = video_paths[video_idx],
         task_description=task_description,
@@ -335,43 +335,6 @@ for video_idx in range(len(video_paths)):
 
 
 ---
-
-
-## generate
-
-| Argument              | Type        | Required | Description                                                                                                                                    |
-| --------------------- | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`               | `str`       | ✅        | Name of the model to use. Options include: `"Robometer"`, `"SOLE-R1"`, `"TOPReward"`, `"RoboReward"`, OpenAI models (e.g.`"GPT-5"`), Google models (e.g., `"Gemini-3-Pro-Preview"`) |
-| `task_description`    | `str`       | ✅        | Natural language description of the task the robot is performing.                                                                              |
-| `video_paths`         | `List[str]` | ✅        | List of paths to input video files.                                                                                                            |
-| `view_type_per_video` | `List[str]` | ✅        | List specifying the camera view(s) used for reward reasoning for each video (e.g., `"external"`, `"wrist"`, or `"external and wrist"`).                                  |
-| `key`                 | `str`       | ❌        | API key required for external models (e.g., OpenAI or Gemini). Not needed for local models.                                                    |
-
-
-| Model Type             | Return Values               |
-| ---------------------- | --------------------------- |
-| SOLE-R1 / GPT / Gemini | `rewards, reasoning_traces` |
-| Robometer              | `rewards, success_probs`    |
-| TOPReward / RoboReward | `rewards`                   |
-
-
-## video_plot
-
-| Argument                | Type         | Required | Description                                                                               |
-| ----------------------- | ------------ | -------- | ----------------------------------------------------------------------------------------- |
-| `outputs`               | `List[dict]` | ❌*       | List of model outputs (e.g., from `generate`) to visualize together.                   |
-| `plot_save_path`        | `str`        | ❌        | Path where the output video with overlays will be saved.                                  |
-| `video_path`            | `str`        | ❌        | Path to the original video file being visualized.                                         |
-| `view_type`             | `str`        | ❌        | View type used for visualization (e.g., `"external"`, `"wrist"`, `"external and wrist"`). |
-| `show_reasoning_traces` | `bool`       | ❌        | Whether to overlay reasoning traces on the video. Default: `False`.                       |
-| `show_all_frames`       | `bool`       | ❌        | Whether to render all frames instead of sampled frames. Default: `False`.                 |
-| `model`                 | `str`        | ❌**      | Model name (used when calling `video_plot` directly instead of passing `outputs`).        |
-| `task_description`      | `str`        | ❌**      | Task description (used in direct-call mode).                                              |
-| `video_paths`           | `List[str]`  | ❌**      | Input videos (used in direct-call mode).                                                  |
-| `view_type_per_video`   | `List[str]`  | ❌**      | View types per video (used in direct-call mode).                                          |
-| `key`                   | `str`        | ❌**      | API key (if required for model).                                                          |
-
-
 
 
 

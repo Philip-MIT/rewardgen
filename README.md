@@ -3,14 +3,16 @@
 
 # RewardGen 
 
-**RewardGen** is a python package that makes it easy to apply any ***reward model*** to your robot videos.
+**RewardGen** is a python package that makes it easy to apply any ***reward model*** to your robot videos and plot them as shown below.
+(All example videos at: https://philip-mit.github.io/rewardgen_view/)
 
 </div>
 
-## Example videos
+## Examples
 
 <!-- https://github.com/user-attachments/assets/cd481f28-0cb3-4874-bd50-1ec3ad8326ec -->
 https://github.com/user-attachments/assets/3c444096-d3dd-47c7-b09d-90b0756d0f72
+
 
 
 ## Supported Models
@@ -49,7 +51,6 @@ pip install -U rewardgen
 ```
 
 ### Option 2: use [uv](https://github.com/astral-sh/uv) for dependency management
-
 ```bash
 # 1) Clone the repository
 git clone https://github.com/Philip-MIT/rewardgen
@@ -377,9 +378,9 @@ for video_idx in range(len(video_paths)):
 ---
 ## Acknowledgements
 RewardGen builds upon the following repos: 
-- RewardScope (https://github.com/philfung/reward-scope)
-- Robometer (https://github.com/robometer/robometer)
 - TOPReward (https://github.com/TOPReward/TOPReward)
+- Robometer (https://github.com/robometer/robometer)
+- RewardScope (https://github.com/philfung/reward-scope)
 
 Also thank you to [Jack Vial](https://github.com/jackvial) for the SO-101 videos.
 

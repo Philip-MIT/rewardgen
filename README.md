@@ -59,6 +59,7 @@ git clone https://github.com/Philip-MIT/rewardgen
 pip install uv
 
 # 3) Sync environment
+cd rewardgen
 uv sync
 
 # 4) Activate environment
@@ -292,7 +293,7 @@ output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rew
 
 video_plot(
     outputs=[output_groundtruth, output_sole, output_robometer], 
-    plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
+    plot_save_path='model_outputs_tmp/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
     video_view_external_path=video_view_external_paths[0], 
     video_view_wrist_path=video_view_wrist_paths[0],
     task_description=task_description,
@@ -315,7 +316,7 @@ task_description="Pick up the cube from the table."
 rewards_sole, reasoning_traces_sole = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
 
 ## PLOTTING
-plot_save_dir = 'model_outputs_tmp/combined'
+plot_save_dir = 'model_outputs_tmp/sole-r1/'
 for video_idx in range(len(video_paths)):
     output_sole = {"model": "SOLE-R1", "rewards": rewards_sole[video_idx]}
     # Optional: Ground-truth rewards (available for test videos from sim environments)

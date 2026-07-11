@@ -17,11 +17,11 @@ https://github.com/user-attachments/assets/3c444096-d3dd-47c7-b09d-90b0756d0f72
 
 ## Supported Models
 - Robometer (https://robometer.github.io)
-- SOLE-R1 (https://philipmit.github.io/sole-r1/)
+- SOLE-R1 (https://philip-mit.github.io/sole-r1/)
 - TOPReward (https://topreward.github.io/webpage/)
 - RoboReward (https://arxiv.org/abs/2601.00675)
 - OpenAI models (e.g., `"GPT-5"`)
-- Google models (e.g., `"Gemini-3-Pro-Preview"`)
+- Google models (e.g., `"Gemini-3.1-Pro-Preview"`)
 
 ## ToDos
 - [ ] Enable fine-tuning of reward models on new datasets/demonstrations
@@ -258,7 +258,7 @@ task_description="Pick up the cube from the table."
 API_KEY = "..."
 
 rewards, reasoning_traces = generate(
-    model="Gemini-3-Pro-Preview",  
+    model="Gemini-3.1-Pro-Preview",  
     task_description=task_description, 
     video_paths=video_paths, 
     view_type='external', 

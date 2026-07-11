@@ -60,7 +60,7 @@ def generate(
     # 
     global CURRENT_MODEL
     # 
-    if CURRENT_MODEL != model and CURRENT_MODEL is not None:
+    if CURRENT_MODEL is not None and CURRENT_MODEL.lower() != model.lower() and not ('gemini' in model.lower() or 'gpt' in model.lower()):
         if verbose:
             print(f"Switching model from {CURRENT_MODEL} → {model}.")
             # if not 'gpt' in model and not 'gemini' in model:
@@ -81,7 +81,7 @@ def generate(
         elif CURRENT_MODEL.lower() == "topreward":
             from rewardgen.topreward import unload_model as unload_topreward
             unload_topreward()
-    elif CURRENT_MODEL is None:
+    elif CURRENT_MODEL is None or ('gemini' in model.lower() or 'gpt' in model.lower()):
         # if verbose:
         #     print("CURRENT_MODEL is None. Trying to unload all known models...\n")
         try:
@@ -236,6 +236,14 @@ def generate(
                 frames = load_video_frames(video_path)
                 videos.append(frames)
     # 
+    if len(view_type_per_video) != len(videos):
+        if len(view_type_per_video) < len(videos) and len(set(view_type_per_video)) == 1:
+            if verbose:
+                print(f"Extending view_type_per_video (length {len(view_type_per_video)}) to match number of videos (length {len(videos)})")
+            view_type_per_video = view_type_per_video * len(videos)
+        else:
+            raise ValueError(f"Length of view_type_per_video ({len(view_type_per_video)}) does not match number of videos ({len(videos)})")
+    # 
     ############ DOWNSAMPLE TO NUM_REASONING_FRAMES (e.g. 10) REASONING FRAMES PER VIDEO
     downsampled_videos = []
     downsample_idx_list_list = []
@@ -289,7 +297,13 @@ def generate(
         # from sole import load_model
         # load_model()
         # rewards, reasoning_traces = sole(downsampled_videos, task_description, view_type_per_video=view_type_per_video, context_window=['current', 'previous', 'first'], model_path=model_path)
-        if len(downsampled_videos)>5:
+        downsampled_videos_len_list = [len(video) for video in downsampled_videos]
+        if len(set(downsampled_videos_len_list)) != 1:
+            if verbose:
+                print("Warning: Videos have different lengths. Setting max_batch_size to 1.")
+            max_batch_size = 1
+        # 
+        if len(downsampled_videos)>max_batch_size:
             # 
             lst=downsampled_videos
             downsampled_videos_chunks_max_5 = [lst[i:i+max_batch_size] for i in range(0, len(lst), max_batch_size)]
@@ -471,6 +485,7 @@ def extract_frames(lerobot_dataset, observation_name=None):
                     # break
     # 
     return frames_by_episode
+
 
 def set_observation_name(video_paths):
     if any('observation.images.side' in x for x in video_paths):
@@ -673,55 +688,155 @@ def annotate(
 # - If width is below min_width, scale up while preserving aspect ratio,
 #     but do not let height exceed target_height. If height hits target_height
 #     first, pad left/right.
+# def resize_and_pad_to_target(
+#     frame,
+#     target_height=768,
+#     min_width=768,
+#     max_width=1536,
+#     pad_color=(255,255,255)
+# ):
+#     if frame is None or frame.size == 0:
+#         raise ValueError("Input frame is empty.")
+#     h, w = frame.shape[:2]
+#     # Step 1: If height is too small, scale up toward target_height,
+#     # but do not allow width to exceed max_width.
+#     if h < target_height:
+#         scale_to_height = target_height / h
+#         scale_to_max_width = max_width / w
+#         scale = min(scale_to_height, scale_to_max_width)
+#         if scale > 1:
+#             new_w = int(round(w * scale))
+#             new_h = int(round(h * scale))
+#             frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+#             h, w = frame.shape[:2]
+#     # Step 2: If width is too small, scale up toward min_width,
+#     # but do not allow height to exceed target_height.
+#     if w < min_width:
+#         scale_to_width = min_width / w
+#         scale_to_target_height = target_height / h
+#         scale = min(scale_to_width, scale_to_target_height)
+#         if scale > 1:
+#             new_w = int(round(w * scale))
+#             new_h = int(round(h * scale))
+#             frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+#             h, w = frame.shape[:2]
+#     # Step 3: Clamp width if somehow rounding pushed it over max_width.
+#     if w > max_width:
+#         scale = max_width / w
+#         new_w = max_width
+#         new_h = int(round(h * scale))
+#         frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+#         h, w = frame.shape[:2]
+#     # Step 4: Pad to target height and minimum width as needed.
+#     pad_top = max((target_height - h) // 2, 0)
+#     pad_bottom = max(target_height - h - pad_top, 0)
+#     pad_left = max((min_width - w) // 2, 0)
+#     pad_right = max(min_width - w - pad_left, 0)
+#     if pad_top or pad_bottom or pad_left or pad_right:
+#         frame = cv2.copyMakeBorder(
+#             frame,
+#             pad_top,
+#             pad_bottom,
+#             pad_left,
+#             pad_right,
+#             borderType=cv2.BORDER_CONSTANT,
+#             value=pad_color,
+#         )
+#     return frame
+
+
+# def resize_and_pad_to_target(
+#     frame,
+#     target_height=768,
+#     min_width=768,
+#     max_width=1536,
+#     pad_color=(255, 255, 255),
+# ):
+#     if frame is None or frame.size == 0:
+#         raise ValueError("Input frame is empty.")
+#     h, w = frame.shape[:2]
+#     # Scale so height is exactly target_height.
+#     scale = target_height / h
+#     new_w = int(round(w * scale))
+#     frame = cv2.resize(
+#         frame,
+#         (new_w, target_height),
+#         interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR,
+#     )
+#     h, w = frame.shape[:2]
+#     # Clamp width if needed.
+#     if w > max_width:
+#         frame = cv2.resize(
+#             frame,
+#             (max_width, target_height),
+#             interpolation=cv2.INTER_AREA,
+#         )
+#         h, w = frame.shape[:2]
+#     # Pad narrow frames.
+#     pad_left = max((min_width - w) // 2, 0)
+#     pad_right = max(min_width - w - pad_left, 0)
+#     if pad_left or pad_right:
+#         frame = cv2.copyMakeBorder(
+#             frame,
+#             0,
+#             0,
+#             pad_left,
+#             pad_right,
+#             borderType=cv2.BORDER_CONSTANT,
+#             value=pad_color,
+#         )
+#     return frame
+
+
 def resize_and_pad_to_target(
     frame,
     target_height=768,
     min_width=768,
     max_width=1536,
-    pad_color=(255,255,255)
+    pad_color=(255, 255, 255),
 ):
     if frame is None or frame.size == 0:
         raise ValueError("Input frame is empty.")
     h, w = frame.shape[:2]
-    # Step 1: If height is too small, scale up toward target_height,
-    # but do not allow width to exceed max_width.
-    if h < target_height:
-        scale_to_height = target_height / h
-        scale_to_max_width = max_width / w
-        scale = min(scale_to_height, scale_to_max_width)
-        if scale > 1:
-            new_w = int(round(w * scale))
-            new_h = int(round(h * scale))
-            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-            h, w = frame.shape[:2]
-    # Step 2: If width is too small, scale up toward min_width,
-    # but do not allow height to exceed target_height.
-    if w < min_width:
-        scale_to_width = min_width / w
-        scale_to_target_height = target_height / h
-        scale = min(scale_to_width, scale_to_target_height)
-        if scale > 1:
-            new_w = int(round(w * scale))
-            new_h = int(round(h * scale))
-            frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-            h, w = frame.shape[:2]
-    # Step 3: Clamp width if somehow rounding pushed it over max_width.
+    # Scale so height is exactly target_height.
+    scale = target_height / h
+    new_w = int(round(w * scale))
+    frame = cv2.resize(
+        frame,
+        (new_w, target_height),
+        interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR,
+    )
+    h, w = frame.shape[:2]
+    # Clamp width while preserving aspect ratio, then pad vertically.
     if w > max_width:
         scale = max_width / w
-        new_w = max_width
         new_h = int(round(h * scale))
-        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        frame = cv2.resize(
+            frame,
+            (max_width, new_h),
+            interpolation=cv2.INTER_AREA,
+        )
         h, w = frame.shape[:2]
-    # Step 4: Pad to target height and minimum width as needed.
-    pad_top = max((target_height - h) // 2, 0)
-    pad_bottom = max(target_height - h - pad_top, 0)
-    pad_left = max((min_width - w) // 2, 0)
-    pad_right = max(min_width - w - pad_left, 0)
-    if pad_top or pad_bottom or pad_left or pad_right:
+        pad_top = max((target_height - h) // 2, 0)
+        pad_bottom = max(target_height - h - pad_top, 0)
         frame = cv2.copyMakeBorder(
             frame,
             pad_top,
             pad_bottom,
+            0,
+            0,
+            borderType=cv2.BORDER_CONSTANT,
+            value=pad_color,
+        )
+        h, w = frame.shape[:2]
+    # Pad narrow frames.
+    pad_left = max((min_width - w) // 2, 0)
+    pad_right = max(min_width - w - pad_left, 0)
+    if pad_left or pad_right:
+        frame = cv2.copyMakeBorder(
+            frame,
+            0,
+            0,
             pad_left,
             pad_right,
             borderType=cv2.BORDER_CONSTANT,
@@ -731,14 +846,18 @@ def resize_and_pad_to_target(
 
 
 
+
 import copy
 
 
 def video_plot(outputs, plot_save_path, video_path=None, video_view_external_path=None, video_view_wrist_path=None, video_frames=None, view_type=None, task_description=None, show_all_frames=False,
-               fps_=2, wrap_width=26, font_scale=1, font_height=30, text_thickness=2, line_type=2, show_reasoning_traces=True, cfg=None, env_rew_lab='Ground-truth reward', 
+               fps=2, wrap_width=26, font_scale=1, font_height=30, text_thickness=2, line_type=2, show_reasoning_traces=True, cfg=None, env_rew_lab='Ground-truth reward', 
                save_json = True, verbose=False):
     # 
     ############ EXTRACT VIDEO FRAMES FOR ALL VIDEOS AS A LIST OF LISTS    
+    # 
+    if video_path is None and video_view_external_path is None and video_view_wrist_path is None and video_frames is None:
+        raise ValueError("At least one video source or video frames must be provided")
     # 
     outputs = copy.deepcopy(outputs)
     for output in outputs:
@@ -778,6 +897,18 @@ def video_plot(outputs, plot_save_path, video_path=None, video_view_external_pat
             frame_list = load_video_frames(video_path)
     else:
         frame_list = video_frames
+    # Validate that the number of rewards matches the number of frames for each output
+    reward_len_list = []
+    for output in outputs:
+        if "rewards" not in output:
+            raise ValueError("Each output must contain 'rewards' key")
+        else:
+            reward_len_list.append(len(output["rewards"]))
+            if not len(output["rewards"]) == len(frame_list):
+                raise ValueError(f"Number of rewards {len(output['rewards'])} for model {output.get('model', 'unknown')} does not match number of frames {len(frame_list)}")
+    # 
+    if len(set(reward_len_list)) != 1:
+        raise ValueError(f"Number of rewards is inconsistent across outputs: {reward_len_list}")
     #   
     # only show reasoning traces in video if only showing one model - if "reasoning_traces" in more than 2 outputs, set reasoning_traces to None since this is too much information to show in the video
     count_reasoning_traces = 0
@@ -864,8 +995,8 @@ def video_plot(outputs, plot_save_path, video_path=None, video_view_external_pat
         # 
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        # out = cv2.VideoWriter(plot_save_path, fourcc, fps_, (frame_width, frame_height))
-        out = cv2.VideoWriter(plot_save_path, fourcc, fps_, (output_width, output_height))
+        # out = cv2.VideoWriter(plot_save_path, fourcc, fps, (frame_width, frame_height))
+        out = cv2.VideoWriter(plot_save_path, fourcc, fps, (output_width, output_height))
         # 
         fig, ax = plt.subplots(dpi=200)  # Increase DPI for higher resolution
         canvas = FigureCanvas(fig)

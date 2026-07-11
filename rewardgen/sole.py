@@ -693,12 +693,13 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
         first_frame_wrist_view = None
         first_frame_external_view = None
         frame_height, frame_width = first_frame.shape[:2]
-        if view_type_per_video[video_idx] == 'external and wrist' or (view_type_per_video is None and frame_width == 2*frame_height):
+        # if view_type_per_video[video_idx] == 'external and wrist' or (view_type_per_video is None and frame_width == 2*frame_height):
+        if view_type_per_video[video_idx] == 'external and wrist':
             first_frame_external_view = first_frame[:, :first_frame.shape[1]//2, :]
             first_frame_wrist_view = first_frame[:, first_frame.shape[1]//2:, :]
         elif view_type_per_video[video_idx] == 'wrist':
             first_frame_wrist_view = first_frame
-        else:
+        else: # assume external view as default
             first_frame_external_view = first_frame
         #
         for i in range(1, len(video)):

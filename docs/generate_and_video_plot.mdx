@@ -1,9 +1,8 @@
-
 ## `generate`
 
 | Argument                    | Type        | Required | Description                                                                                                                                                                                 |
 | --------------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`                     | `str`       | ✅        | Name of the model to use. Options include: `"Robometer"`, `"SOLE-R1"`, `"TOPReward"`, `"RoboReward"`, OpenAI models such as `"GPT-5"`, and Google models such as `"Gemini-3-Pro-Preview"`.  |
+| `model`                     | `str`       | ✅        | Name of the model to use. Options include: `"Robometer"`, `"SOLE-R1"`, `"TOPReward"`, `"RoboReward"`, OpenAI models such as `"GPT-5"`, and Google models such as `"Gemini-3.1-Pro-Preview"`.  |
 | `task_description`          | `str`       | ✅        | Natural language description of the robot task.                                                                                                                                             |
 | `video_paths`               | `list[str]` | ❌*       | Paths to one or more input videos. Use this for batch reward generation from video files.                                                                                                   |
 | `video_path`                | `str`       | ❌*       | Path to a single input video. Convenience alternative to `video_paths=[video_path]`.                                                                                                        |
@@ -48,7 +47,7 @@ For a single-video input, return values are for that video directly. For multi-v
 | `view_type`                | `str`            | ❌        | Camera view label used for visualization, e.g. `"external"`, `"wrist"`, or `"external and wrist"`. This may be inferred when using `video_view_external_path` or `video_view_wrist_path`. |
 | `task_description`         | `str`            | ❌        | Optional task description displayed in a top bar above the video.                                                                                                                         |
 | `show_all_frames`          | `bool`           | ❌        | If `False` and reasoning traces are shown, only frames with non-empty reasoning traces are rendered. Default: `False`.                                                                    |
-| `fps_`                     | `int` or `float` | ❌        | Frames per second for the output visualization video. Default: `2`.                                                                                                                       |
+| `fps`                     | `int` or `float` | ❌        | Frames per second for the output visualization video. Default: `2`.                                                                                                                       |
 | `wrap_width`               | `int`            | ❌        | Approximate text wrapping width for reasoning traces. Default: `26`.                                                                                                                      |
 | `font_scale`               | `int` or `float` | ❌        | Font scale used for reasoning trace text. Default: `1`.                                                                                                                                   |
 | `font_height`              | `int`            | ❌        | Vertical spacing between lines of reasoning trace text. Default: `30`.                                                                                                                    |

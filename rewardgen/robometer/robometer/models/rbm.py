@@ -530,11 +530,13 @@ class RBM(PredictionHeadsMixin, PreTrainedModel):
                 hasattr(self.model, "config") and "Qwen3" in str(type(self.model))
             )
             if is_qwen3:
-                outputs = self.model(**model_kwargs, output_hidden_states=True, return_dict=True)
-                # Qwen3 uses hidden_states tuple, take the last layer
-                hidden_state = (
-                    outputs.hidden_states[-1] if hasattr(outputs, "hidden_states") else outputs.last_hidden_state
-                )
+                # outputs = self.model(**model_kwargs, output_hidden_states=True, return_dict=True)
+                # # Qwen3 uses hidden_states tuple, take the last layer
+                # hidden_state = (
+                #     outputs.hidden_states[-1] if hasattr(outputs, "hidden_states") else outputs.last_hidden_state
+                # )
+                outputs = self.model(**model_kwargs, output_hidden_states=False, return_dict=True)
+                hidden_state = outputs.last_hidden_state
             else:
                 outputs = self.model(**model_kwargs)
                 hidden_state = outputs.last_hidden_state  # [B, seq_len, hidden_dim]
@@ -625,11 +627,13 @@ class RBM(PredictionHeadsMixin, PreTrainedModel):
                 hasattr(self.model, "config") and "Qwen3" in str(type(self.model))
             )
             if is_qwen3:
-                outputs = self.model(**model_kwargs, output_hidden_states=True, return_dict=True)
-                # Qwen3 uses hidden_states tuple, take the last layer
-                hidden_state = (
-                    outputs.hidden_states[-1] if hasattr(outputs, "hidden_states") else outputs.last_hidden_state
-                )
+                # outputs = self.model(**model_kwargs, output_hidden_states=True, return_dict=True)
+                # # Qwen3 uses hidden_states tuple, take the last layer
+                # hidden_state = (
+                #     outputs.hidden_states[-1] if hasattr(outputs, "hidden_states") else outputs.last_hidden_state
+                # )
+                outputs = self.model(**model_kwargs, output_hidden_states=False, return_dict=True)
+                hidden_state = outputs.last_hidden_state
             else:
                 outputs = self.model(**model_kwargs)
                 hidden_state = outputs.last_hidden_state  # [B, seq_len, hidden_dim]
@@ -991,3 +995,4 @@ class RBM(PredictionHeadsMixin, PreTrainedModel):
                 second_per_grid_ts=second_per_grid_ts,
                 **kwargs,
             )
+

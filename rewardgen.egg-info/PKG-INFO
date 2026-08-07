@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: rewardgen
-Version: 0.1.1.2
+Version: 0.1.1.3
 Summary: RewardGen package
 Author: Philip
 Requires-Python: <3.12,>=3.10

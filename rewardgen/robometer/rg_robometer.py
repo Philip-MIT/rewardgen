@@ -268,53 +268,274 @@ def compute_rewards_per_frame_local(
     return progress_array, success_array
 
 
+def compute_rewards_per_frame_batch_local(
+    model_path: str,
+    video_frames_batch,
+    task,
+    device: Optional[torch.device] = None,
+    verbose: bool = False,
+):
+    """
+    Run Robometer progress inference for multiple trajectories in one
+    model forward.
 
-def robometer(frames_final, task_description, model_path=None, verbose=False):
-    # def robometer(video_path, task_description):
-    # frames = load_frames_input(
-    #     # str(args.video),
-    #     # fps=float(args.fps),
-    #     # max_frames=int(args.max_frames),
-    #     video_path,
-    #     fps=1000,
-    #     max_frames=1000,
-    # )
-    # # 
-    # # frames[0].shape
-    # frame_height, frame_width = frames[0].shape[:2]
-    # # 
-    # frames_final=frames
-    # if 'test_videos' in video_path:
-    #     if frame_width == 2*frame_height:
-    #         # extract left half of each frame since the video has side-by-side views and we only want to use the external view
-    #         frames_final=[]
-    #         for i in range(len(frames)):
-    #             frames_final.append(frames[i][:, :frames[i].shape[1]//2, :])
-    
-    # frames_final[0].shape
+    Args:
+        video_frames_batch:
+            List[np.ndarray], each shaped (T, H, W, C).
+
+        task:
+            Either one task string shared by the batch, or a list of
+            task strings with len == batch size.
+
+    Returns:
+        progress_arrays: list[np.ndarray]
+        success_arrays: list[np.ndarray]
+    """
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    if verbose:
+        load_model(model_path)
+    else:
+        silent_call(load_model, model_path)
+
+    global reward_model, tokenizer, processor, exp_config
+
+    # Robometer's current progress-head code eventually stacks the
+    # per-example predictions, so keeping the same number of frames
+    # in each batch is safest.
+    frame_counts = [len(frames) for frames in video_frames_batch]
+    if len(set(frame_counts)) != 1:
+        raise ValueError(
+            "All trajectories in a Robometer batch must have the same "
+            f"number of frames; got {frame_counts}"
+        )
+
+    if isinstance(task, str):
+        tasks = [task] * len(video_frames_batch)
+    else:
+        tasks = list(task)
+        if len(tasks) != len(video_frames_batch):
+            raise ValueError(
+                "Number of task strings must equal number of trajectories"
+            )
+
+    progress_samples = []
+
+    for idx, (video_frames, task_i) in enumerate(
+        zip(video_frames_batch, tasks)
+    ):
+        video_frames = np.asarray(video_frames)
+        T = int(video_frames.shape[0])
+
+        traj = Trajectory(
+            frames=video_frames,
+            frames_shape=tuple(video_frames.shape),
+            task=task_i,
+            id=str(idx),
+            metadata={"subsequence_length": T},
+            video_embeddings=None,
+        )
+
+        progress_samples.append(
+            ProgressSample(
+                trajectory=traj,
+                sample_type="progress",
+            )
+        )
+
+    # THIS is the important difference:
+    #
+    # old:
+    #   batch_collator([one_sample])
+    #
+    # new:
+    #   batch_collator([sample_0, ..., sample_B])
+    batch_collator = setup_batch_collator(
+        processor,
+        tokenizer,
+        exp_config,
+        is_eval=True,
+    )
+
+    batch = batch_collator(progress_samples)
+    progress_inputs = batch["progress_inputs"]
+
+    for key, value in progress_inputs.items():
+        if hasattr(value, "to"):
+            progress_inputs[key] = value.to(
+                device,
+                non_blocking=True,
+            )
+
+    loss_config = getattr(exp_config, "loss", None)
+
+    is_discrete = (
+        getattr(loss_config, "progress_loss_type", "l2").lower()
+        == "discrete"
+        if loss_config
+        else False
+    )
+
+    num_bins = (
+        getattr(loss_config, "progress_discrete_bins", None)
+        or getattr(exp_config.model, "progress_discrete_bins", 10)
+    )
+
+    if verbose:
+        print(
+            f"\nRunning Robometer inference "
+            f"(batch_size={len(progress_samples)})."
+        )
+
+    # forward_model() already uses no_grad(), but inference_mode()
+    # is appropriate for this pure inference path as well.
+    with torch.inference_mode():
+        if verbose:
+            results = compute_batch_outputs(
+                reward_model,
+                tokenizer,
+                progress_inputs,
+                sample_type="progress",
+                is_discrete_mode=is_discrete,
+                num_bins=num_bins,
+            )
+        else:
+            results = silent_call(
+                compute_batch_outputs,
+                reward_model,
+                tokenizer,
+                progress_inputs,
+                sample_type="progress",
+                is_discrete_mode=is_discrete,
+                num_bins=num_bins,
+            )
+
+    progress_pred = results.get("progress_pred", [])
+
+    progress_arrays = [
+        np.asarray(pred, dtype=np.float32)
+        for pred in progress_pred
+    ]
+
+    outputs_success = results.get("outputs_success", {})
+    success_probs = (
+        outputs_success.get("success_probs", [])
+        if outputs_success
+        else []
+    )
+
+    success_arrays = [
+        np.asarray(pred, dtype=np.float32)
+        for pred in success_probs
+    ]
+
+    # Preserve one output per input even if success wasn't returned.
+    if not success_arrays:
+        success_arrays = [
+            np.array([], dtype=np.float32)
+            for _ in progress_arrays
+        ]
+
+    return progress_arrays, success_arrays
+
+
+def robometer_batch(
+    frames_batch,
+    task_description,
+    model_path=None,
+    verbose=False,
+):
     from rewardgen.utils.model_utils import get_model_dir
+
     if model_path is None:
         model_path = get_model_dir("robometer")
-    # 
-    rewards, success_probs = compute_rewards_per_frame_local(
-        # model_path=args.model_path,
-        # model_path='../model_checkpoints/Robometer-4B/',
+
+    rewards_batch, success_probs_batch = (
+        compute_rewards_per_frame_batch_local(
+            model_path=model_path,
+            video_frames_batch=[
+                np.asarray(frames)
+                for frames in frames_batch
+            ],
+            task=task_description,
+            verbose=verbose,
+        )
+    )
+
+    rewards_batch = [
+        (rewards * 100).tolist()
+        for rewards in rewards_batch
+    ]
+
+    success_probs_batch = [
+        (probs * 100).tolist()
+        for probs in success_probs_batch
+    ]
+
+    return rewards_batch, success_probs_batch
+
+
+# def robometer(frames_final, task_description, model_path=None, verbose=False):
+#     # def robometer(video_path, task_description):
+#     # frames = load_frames_input(
+#     #     # str(args.video),
+#     #     # fps=float(args.fps),
+#     #     # max_frames=int(args.max_frames),
+#     #     video_path,
+#     #     fps=1000,
+#     #     max_frames=1000,
+#     # )
+#     # # 
+#     # # frames[0].shape
+#     # frame_height, frame_width = frames[0].shape[:2]
+#     # # 
+#     # frames_final=frames
+#     # if 'test_videos' in video_path:
+#     #     if frame_width == 2*frame_height:
+#     #         # extract left half of each frame since the video has side-by-side views and we only want to use the external view
+#     #         frames_final=[]
+#     #         for i in range(len(frames)):
+#     #             frames_final.append(frames[i][:, :frames[i].shape[1]//2, :])
+    
+#     # frames_final[0].shape
+#     from rewardgen.utils.model_utils import get_model_dir
+#     if model_path is None:
+#         model_path = get_model_dir("robometer")
+#     # 
+#     rewards, success_probs = compute_rewards_per_frame_local(
+#         # model_path=args.model_path,
+#         # model_path='../model_checkpoints/Robometer-4B/',
+#         model_path=model_path,
+#         video_frames=np.array(frames_final),
+#         # task=args.task,
+#         task=task_description,
+#         verbose=verbose,
+#     )
+    
+#     rewards = rewards.tolist() if rewards is not None else None
+#     success_probs = success_probs.tolist() if success_probs is not None else None
+    
+#     # multiply by 100 to convert to percentage
+#     if success_probs is not None:
+#         success_probs = [prob * 100 for prob in success_probs]
+#         rewards = [reward * 100 for reward in rewards]
+#     # 
+#     return rewards, success_probs
+
+
+def robometer(
+    frames_final,
+    task_description,
+    model_path=None,
+    verbose=False,
+):
+    rewards_batch, success_batch = robometer_batch(
+        [frames_final],
+        task_description,
         model_path=model_path,
-        video_frames=np.array(frames_final),
-        # task=args.task,
-        task=task_description,
         verbose=verbose,
     )
-    
-    rewards = rewards.tolist() if rewards is not None else None
-    success_probs = success_probs.tolist() if success_probs is not None else None
-    
-    # multiply by 100 to convert to percentage
-    if success_probs is not None:
-        success_probs = [prob * 100 for prob in success_probs]
-        rewards = [reward * 100 for reward in rewards]
-    # 
-    return rewards, success_probs
 
-
+    return rewards_batch[0], success_batch[0]
 

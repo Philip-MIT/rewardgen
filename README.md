@@ -114,18 +114,18 @@ gcloud config set auth/disable_credentials False
 # pip install -U rewardgen
 from rewardgen import generate, video_plot
 
-video_view_external_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
-task_description="Pick up the cube from the table."
+video_paths_external_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_paths_wrist_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
+task_description = "Pick up the cube from the table."
 
 # Robometer
-response = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
+response = generate(model="Robometer",  task_description=task_description, video_paths_external_view=video_paths_external_view,  verbose=False)
 print(response.rewards)
 print(response.success_probs)
 output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-response = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths_external_view=video_paths_external_view, video_paths_wrist_view=video_paths_wrist_view, verbose=False)
 print(response.rewards)
 print(response.output_text)
 output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
@@ -138,7 +138,7 @@ with open('test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_uns
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
 # Plot
-video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_view_external_path=video_view_external_paths[0], video_view_wrist_path=video_view_wrist_paths[0], task_description=task_description)
+video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_view_external_path=video_paths_external_view[0], video_view_wrist_path=video_paths_wrist_view[0], task_description=task_description)
 
 ```
 
@@ -150,8 +150,8 @@ video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_sav
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+task_description = "Pick up the cube from the table."
 
 response = generate(
     model="Robometer",  
@@ -170,8 +170,8 @@ print(response.success_probs)
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
+task_description = "Pick up the cube from the table."
 
 response = generate(
     model="SOLE-R1",  
@@ -202,8 +202,8 @@ video_plot(
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+task_description = "Pick up the cube from the table."
 
 response = generate(
     model="TOPReward",  
@@ -221,8 +221,8 @@ print(response.rewards)
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+task_description = "Pick up the cube from the table."
 
 response = generate(
     model="RoboReward",  
@@ -240,8 +240,8 @@ print(response.rewards)
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+task_description = "Pick up the cube from the table."
 
 # requires OpenAI API key: https://developers.openai.com/api/docs/quickstart
 API_KEY = "..."
@@ -263,8 +263,8 @@ print(response.output_text)
 
 from rewardgen import generate
 
-video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-task_description="Pick up the cube from the table."
+video_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+task_description = "Pick up the cube from the table."
 
 # requires Gemini API key: https://ai.google.dev/gemini-api/docs/api-key
 API_KEY = "..."
@@ -286,16 +286,16 @@ print(response.output_text)
 
 from rewardgen import generate, video_plot
 
-video_view_external_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
-video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
-task_description="Pick up the cube from the table."
+video_paths_external_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_paths_wrist_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
+task_description = "Pick up the cube from the table."
 
 # Robometer
-response = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
+response = generate(model="Robometer",  task_description=task_description, video_paths_external_view=video_paths_external_view,  verbose=False)
 output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-response = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths_external_view=video_paths_external_view, video_paths_wrist_view=video_paths_wrist_view, verbose=False)
 output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
@@ -308,8 +308,8 @@ output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rew
 video_plot(
     outputs=[output_groundtruth, output_sole, output_robometer], 
     plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
-    video_view_external_path=video_view_external_paths[0], 
-    video_view_wrist_path=video_view_wrist_paths[0],
+    video_view_external_path=video_paths_external_view[0], 
+    video_view_wrist_path=video_paths_wrist_view[0],
     task_description=task_description,
     verbose=False
 )
@@ -323,7 +323,7 @@ import glob
 import json
 
 video_paths = glob.glob('test_videos/robosuite/lift/unsuccessful/*.mp4')
-task_description="Pick up the cube from the table."
+task_description = "Pick up the cube from the table."
 
 ## REWARD GENERATION
 # SOLE-R1 for all videos

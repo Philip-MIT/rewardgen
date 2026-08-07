@@ -119,12 +119,16 @@ video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lif
 task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
-output_robometer = {"model": "Robometer", "rewards": rewards[0]}
+response = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
+print(response.rewards)
+print(response.success_probs)
+output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
-output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
+response = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
+print(response.rewards)
+print(response.output_text)
+output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
 import json
@@ -149,13 +153,15 @@ from rewardgen import generate
 video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
-rewards, success_probs = generate(
+response = generate(
     model="Robometer",  
     task_description=task_description, 
     video_paths=video_paths, 
     view_type="external",
     verbose=False
 )
+print(response.rewards)
+print(response.success_probs)
 
 ```
 
@@ -167,22 +173,24 @@ from rewardgen import generate
 video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4']
 task_description="Pick up the cube from the table."
 
-rewards, reasoning_traces = generate(
+response = generate(
     model="SOLE-R1",  
     task_description=task_description, 
     video_paths=video_paths, 
     view_type='external and wrist',
     verbose=False
 )
+print(response.rewards)
+print(response.output_text)
 
-output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
+output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
 
-# Plotting with show_reasoning_traces=True
+# Plotting with show_output_text=True
 video_plot(
     outputs=[output_sole], 
     plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
     video_path=video_paths[0],
-    show_reasoning_traces=True,
+    show_output_text=True,
     task_description=task_description,
     verbose=False
 )
@@ -197,13 +205,14 @@ from rewardgen import generate
 video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
-rewards = generate(
+response = generate(
     model="TOPReward",  
     task_description=task_description, 
     video_paths=video_paths, 
     view_type='external',
     verbose=False
 )
+print(response.rewards)
 
 ```
 
@@ -215,13 +224,14 @@ from rewardgen import generate
 video_paths=['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 task_description="Pick up the cube from the table."
 
-rewards = generate(
+response = generate(
     model="RoboReward",  
     task_description=task_description, 
     video_paths=video_paths, 
     view_type='external',
     verbose=False
 )
+print(response.rewards)
 
 ```
 
@@ -236,7 +246,7 @@ task_description="Pick up the cube from the table."
 # requires OpenAI API key: https://developers.openai.com/api/docs/quickstart
 API_KEY = "..."
 
-rewards, reasoning_traces = generate(
+response = generate(
     model="GPT-5",  
     task_description=task_description, 
     video_paths=video_paths, 
@@ -244,6 +254,8 @@ rewards, reasoning_traces = generate(
     key=API_KEY, 
     verbose=False
 )
+print(response.rewards)
+print(response.output_text)
 ```
 
 ### Gemini-3-Pro (and other Google models)
@@ -257,7 +269,7 @@ task_description="Pick up the cube from the table."
 # requires Gemini API key: https://ai.google.dev/gemini-api/docs/api-key
 API_KEY = "..."
 
-rewards, reasoning_traces = generate(
+response = generate(
     model="Gemini-3.1-Pro-Preview",  
     task_description=task_description, 
     video_paths=video_paths, 
@@ -265,6 +277,8 @@ rewards, reasoning_traces = generate(
     key=API_KEY,
     verbose=False
 )
+print(response.rewards)
+print(response.output_text)
 ```
 
 ## Video plotting
@@ -277,12 +291,12 @@ video_view_wrist_paths = ['test_videos/robosuite/lift/unsuccessful/robosuite_lif
 task_description="Pick up the cube from the table."
 
 # Robometer
-rewards, success_probs = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
-output_robometer = {"model": "Robometer", "rewards": rewards[0]}
+response = generate(model="Robometer",  task_description=task_description, video_view_external_paths=video_view_external_paths,  verbose=False)
+output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-rewards, reasoning_traces = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
-output_sole = {"model": "SOLE-R1", "rewards": rewards[0], "reasoning_traces": reasoning_traces[0]}
+response = generate(model="SOLE-R1",  task_description=task_description, video_view_external_paths=video_view_external_paths, video_view_wrist_paths=video_view_wrist_paths, verbose=False)
+output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
 import json
@@ -313,12 +327,12 @@ task_description="Pick up the cube from the table."
 
 ## REWARD GENERATION
 # SOLE-R1 for all videos
-rewards_sole, reasoning_traces_sole = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
 
 ## PLOTTING
 plot_save_dir = 'model_outputs/sole-r1/'
 for video_idx in range(len(video_paths)):
-    output_sole = {"model": "SOLE-R1", "rewards": rewards_sole[video_idx]}
+    output_sole = {"model": "SOLE-R1", "rewards": response.rewards[video_idx]}
     # Optional: Ground-truth rewards (available for test videos from sim environments)
     with open(video_paths[video_idx].replace(".mp4", "/data.json"), 'r') as f:
         data = json.load(f)

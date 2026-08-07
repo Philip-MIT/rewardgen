@@ -147,34 +147,110 @@ def compute_rewards_per_frame_local(
     progress_sample = ProgressSample(trajectory=traj, sample_type="progress")
     batch = batch_collator([progress_sample])
 
+    # progress_inputs = batch["progress_inputs"]
+    # for key, value in progress_inputs.items():
+    #     if hasattr(value, "to"):
+    #         progress_inputs[key] = value.to(device)
+
+    # loss_config = getattr(exp_config, "loss", None)
+    # is_discrete = (
+    #     getattr(loss_config, "progress_loss_type", "l2").lower() == "discrete"
+    #     if loss_config else False
+    # )
+    # num_bins = (
+    #     getattr(loss_config, "progress_discrete_bins", None)
+    #     or getattr(exp_config.model, "progress_discrete_bins", 10)
+    # )
+    # if verbose:
+    #     print("\nRunning Robometer inference.")
+    #     results = compute_batch_outputs(
+    #         reward_model,
+    #         tokenizer,
+    #         progress_inputs,
+    #         sample_type="progress",
+    #         is_discrete_mode=is_discrete,
+    #         num_bins=num_bins,
+    #     )
+    # else:
+    #     results = silent_call(compute_batch_outputs, reward_model, tokenizer, progress_inputs, sample_type="progress", is_discrete_mode=is_discrete, num_bins=num_bins)
+
+    # progress_pred = results.get("progress_pred", [])
+    
+    
     progress_inputs = batch["progress_inputs"]
+
+    # Determine the dtype used by the underlying Qwen model.
+    backbone = getattr(reward_model, "model", reward_model)
+
+    try:
+        model_dtype = next(
+            parameter.dtype
+            for parameter in backbone.parameters()
+            if parameter.is_floating_point()
+        )
+    except StopIteration:
+        model_dtype = torch.float32
+
+    # Move inputs to the GPU. Preserve integer tensors such as input_ids and
+    # image_grid_thw, but cast floating-point image inputs to the model dtype.
     for key, value in progress_inputs.items():
-        if hasattr(value, "to"):
-            progress_inputs[key] = value.to(device)
+        if isinstance(value, torch.Tensor):
+            value = value.to(device)
+
+            if value.is_floating_point():
+                value = value.to(dtype=model_dtype)
+
+            progress_inputs[key] = value
 
     loss_config = getattr(exp_config, "loss", None)
+
     is_discrete = (
         getattr(loss_config, "progress_loss_type", "l2").lower() == "discrete"
-        if loss_config else False
+        if loss_config
+        else False
     )
+
     num_bins = (
         getattr(loss_config, "progress_discrete_bins", None)
         or getattr(exp_config.model, "progress_discrete_bins", 10)
     )
+
     if verbose:
         print("\nRunning Robometer inference.")
-        results = compute_batch_outputs(
-            reward_model,
-            tokenizer,
-            progress_inputs,
-            sample_type="progress",
-            is_discrete_mode=is_discrete,
-            num_bins=num_bins,
-        )
-    else:
-        results = silent_call(compute_batch_outputs, reward_model, tokenizer, progress_inputs, sample_type="progress", is_discrete_mode=is_discrete, num_bins=num_bins)
+
+    autocast_enabled = (
+        device.type == "cuda"
+        and model_dtype in (torch.float16, torch.bfloat16)
+    )
+
+    with torch.inference_mode():
+        with torch.autocast(
+            device_type=device.type,
+            dtype=model_dtype if autocast_enabled else torch.float32,
+            enabled=autocast_enabled,
+        ):
+            if verbose:
+                results = compute_batch_outputs(
+                    reward_model,
+                    tokenizer,
+                    progress_inputs,
+                    sample_type="progress",
+                    is_discrete_mode=is_discrete,
+                    num_bins=num_bins,
+                )
+            else:
+                results = silent_call(
+                    compute_batch_outputs,
+                    reward_model,
+                    tokenizer,
+                    progress_inputs,
+                    sample_type="progress",
+                    is_discrete_mode=is_discrete,
+                    num_bins=num_bins,
+                )
 
     progress_pred = results.get("progress_pred", [])
+
     progress_array = (
         np.array(progress_pred[0], dtype=np.float32)
         if progress_pred and len(progress_pred) > 0

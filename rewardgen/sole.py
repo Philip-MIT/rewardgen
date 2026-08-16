@@ -21,11 +21,7 @@ from datasets import Image, load_dataset, load_from_disk
 from PIL import Image
 from qwen_vl_utils import process_vision_info, smart_resize
 from tqdm import tqdm
-from transformers import (
-    AutoModelForVision2Seq,
-    AutoProcessor,
-    Qwen2VLForConditionalGeneration,
-)
+from transformers import AutoProcessor
 from trl.data_utils import (
     apply_chat_template,
     is_conversational,
@@ -36,7 +32,6 @@ import os
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 from vllm import LLM, SamplingParams
 
-from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
 
 
 min_pixels = 3136
@@ -578,19 +573,6 @@ def create_composite_frame( first_frame_wrist_view,
     return composite
 
 
-processing_class = None
-processor = None
-llm = None
-sampling_params = None
-def unload_model():
-    import gc, torch
-
-    for name in ["processing_class", "processor", "llm", "sampling_params"]:
-        globals()[name] = None
-
-    gc.collect()
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
 
     
 # def load_model():
@@ -627,9 +609,9 @@ def unload_model():
 #     torch.cuda.empty_cache()
 #     torch.cuda.ipc_collect()
 
-from vllm import LLM, SamplingParams
 
-from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+############## old vllm
+
 temperature_ = 1.0
 
 
@@ -662,6 +644,122 @@ def load_model(model_path: str = None, verbose=False):
             top_k=50,
             max_tokens=200,
         )
+
+
+processing_class = None
+processor = None
+llm = None
+sampling_params = None
+def unload_model():
+    import gc, torch
+
+    for name in ["processing_class", "processor", "llm", "sampling_params"]:
+        globals()[name] = None
+
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+
+############## new vllm
+
+processing_class = None
+processor = None
+llm = None
+sampling_params = None
+_loaded_model_path = None
+
+
+def unload_model():
+    global processing_class
+    global processor
+    global llm
+    global sampling_params
+    global _loaded_model_path
+
+    import gc
+    import torch
+
+    old_llm = llm
+
+    # Remove global references first.
+    llm = None
+    processing_class = None
+    processor = None
+    sampling_params = None
+    _loaded_model_path = None
+
+    if old_llm is not None:
+        # Clear cached multimodal embeddings before destroying the engine.
+        try:
+            old_llm.reset_mm_cache()
+        except Exception:
+            pass
+
+        del old_llm
+
+    gc.collect()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
+
+def load_model(
+    model_path: str = None,
+    verbose: bool = False,
+):
+    global processing_class
+    global processor
+    global llm
+    global sampling_params
+    global _loaded_model_path
+
+    from rewardgen.utils.model_utils import get_model_dir
+
+    if model_path is None:
+        model_path = get_model_dir("sole-r1")
+
+    if llm is not None and _loaded_model_path == model_path:
+        return
+
+    if llm is not None:
+        unload_model()
+
+    if verbose:
+        print(f"Loading SOLE-R1 from {model_path} with vLLM...")
+
+    # Use the checkpoint's own tokenizer and chat template. Keeping two
+    # independently loaded processors can produce subtle prompt differences.
+    processor = AutoProcessor.from_pretrained(
+        model_path,
+        trust_remote_code=True,
+    )
+    processing_class = processor
+
+    llm = LLM(
+        model=model_path,
+        tokenizer=model_path,
+        trust_remote_code=True,
+        dtype="bfloat16",
+        gpu_memory_utilization=0.90,
+        max_model_len=16384,
+        enable_prefix_caching=True,
+        # Each SOLE request contains one composite image.
+        limit_mm_per_prompt={"image": 1},
+    )
+
+    sampling_params = SamplingParams(
+        temperature=1.0,
+        top_p=0.9,
+        top_k=50,
+        max_tokens=200,
+    )
+
+    _loaded_model_path = model_path
+
+
+
+
 
 # load_model()
 

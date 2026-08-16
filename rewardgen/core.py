@@ -1,3 +1,5 @@
+############### core.py
+
 import os
 import numpy as np
 import cv2
@@ -782,58 +784,38 @@ def generate(
                 rewards_video_i = roboreward(downsampled_videos[video_idx], task_description, verbose=verbose, model=RoboRewardModel(model_name=model_path))
             rewards.append(rewards_video_i)
     # 
-    elif model.lower() == 'robometer':
-        # from rewardgen.robometer.rg_robometer import robometer
-        # # 
-        # rewards = []
-        # success_probs = []
-        # # for video_path in video_paths:
-        # for video_idx in range(len(downsampled_videos)):
-        #     if verbose: 
-        #         print(f"Generating rewards for video {video_idx+1}/{len(downsampled_videos)} using Robometer...")
-        #     # rewards_video_i, success_probs_video_i = robometer(video_path, task_description)
-        #     rewards_video_i, success_probs_video_i = robometer(downsampled_videos[video_idx], task_description, model_path=model_path, verbose=verbose)
-        #     rewards.append(rewards_video_i)
-        #     success_probs.append(success_probs_video_i)
+    elif model.lower() == "robometer":
         from rewardgen.robometer.rg_robometer import robometer_batch
         num_videos = len(downsampled_videos)
         rewards = [None] * num_videos
         success_probs = [None] * num_videos
-        # Group by frame count.
-        #
-        # Robometer's downstream progress extraction stacks the output
-        # sequences, so batches with the same T are the safest option.
+        # LeRobot's dense Robometer output is stack-based, so batch videos
+        # with matching temporal lengths.
         batches_by_length = {}
         for video_idx, frames in enumerate(downsampled_videos):
-            T = len(frames)
-            batches_by_length.setdefault(T, []).append(
+            batches_by_length.setdefault(len(frames), []).append(
                 (video_idx, frames)
             )
-        # 
-        for T, items in batches_by_length.items():
-            # Respect RewardGen's existing max_batch_size argument.
+        for frame_count, items in batches_by_length.items():
             for start in range(0, len(items), max_batch_size):
-                chunk = items[start:start + max_batch_size]
-                indices = [item[0] for item in chunk]
+                chunk = items[start : start + max_batch_size]
+                original_indices = [item[0] for item in chunk]
                 frames_batch = [item[1] for item in chunk]
                 if verbose:
                     print(
                         f"Generating Robometer rewards for "
                         f"{len(frames_batch)} videos "
-                        f"(frames/video={T}, "
-                        f"batch_size={len(frames_batch)})..."
+                        f"(frames/video={frame_count})..."
                     )
-                rewards_chunk, success_chunk = robometer_batch(
+                reward_chunk, success_chunk = robometer_batch(
                     frames_batch,
                     task_description,
                     model_path=model_path,
                     verbose=verbose,
                 )
-                for output_idx, original_idx in enumerate(indices):
-                    rewards[original_idx] = rewards_chunk[output_idx]
-                    success_probs[original_idx] = (
-                        success_chunk[output_idx]
-                    )
+                for chunk_idx, video_idx in enumerate(original_indices):
+                    rewards[video_idx] = reward_chunk[chunk_idx]
+                    success_probs[video_idx] = success_chunk[chunk_idx]
     # 
     else:
         raise ValueError(f'Unknown model: {model}')

@@ -4,28 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rewardgen"
-version = "0.1.1.3"
+version = "0.1.1.6"
 description = "RewardGen package"
 readme = "README.md"
-# requires-python = ">=3.8"
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.12,<3.13"
 
 authors = [
-    { name = "Philip" }
+    { name = "Philip Schroeder" }
 ]
 
 dependencies = [
-    # --- FORCE WORKING TORCH STACK ---
-    "torch==2.9.0",
-    "torchvision==0.24.0",
-    "torchaudio==2.9.0",
+    "torch==2.10.0",
+    # "torchvision==0.24.0",
+    # "torchaudio==2.9.0",
 
-    # Core ML stack
-    "transformers==4.57.3",
-    "vllm==0.12.0",
-    "unsloth>=2025.10",
+    "lerobot==0.6.1",
+    "transformers==5.5.4",
+    "qwen-vl-utils>=0.0.11,<0.1.0",
+    "vllm==0.19.1",
 
-    "wandb>=0.19.1",
+
     "pillow",
     "accelerate>=1.2.1",
     "qwen_vl_utils",
@@ -39,16 +37,7 @@ dependencies = [
     "openai",
     "google-genai",
 
-    # Robometer
-    "omegaconf>=2.3.0",
-    "hydra-core",
-    "tensorboard",
-    "peft",
-    "codetiming>=1.4.0",
-    "sentence-transformers>=2.0.0",
-    "decord>=0.6.0",
 
-    "lerobot>=0.4.4",
 ]
 
 
@@ -78,8 +67,8 @@ include = ["rewardgen*"]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cu128" }
-torchvision = { index = "pytorch-cu128" }
-torchaudio = { index = "pytorch-cu128" }
+# torchvision = { index = "pytorch-cu128" }
+# torchaudio = { index = "pytorch-cu128" }
 
 [[tool.uv.index]]
 name = "pytorch-cu128"

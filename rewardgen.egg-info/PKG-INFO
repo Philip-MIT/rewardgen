@@ -1,17 +1,15 @@
 Metadata-Version: 2.4
 Name: rewardgen
-Version: 0.1.1.3
+Version: 0.1.1.6
 Summary: RewardGen package
-Author: Philip
-Requires-Python: <3.12,>=3.10
+Author: Philip Schroeder
+Requires-Python: <3.13,>=3.12
 Description-Content-Type: text/markdown
-Requires-Dist: torch==2.9.0
-Requires-Dist: torchvision==0.24.0
-Requires-Dist: torchaudio==2.9.0
-Requires-Dist: transformers==4.57.3
-Requires-Dist: vllm==0.12.0
-Requires-Dist: unsloth>=2025.10
-Requires-Dist: wandb>=0.19.1
+Requires-Dist: torch==2.10.0
+Requires-Dist: lerobot==0.6.1
+Requires-Dist: transformers==5.5.4
+Requires-Dist: qwen-vl-utils<0.1.0,>=0.0.11
+Requires-Dist: vllm==0.19.1
 Requires-Dist: pillow
 Requires-Dist: accelerate>=1.2.1
 Requires-Dist: qwen_vl_utils
@@ -22,14 +20,6 @@ Requires-Dist: matplotlib
 Requires-Dist: av<16.0.0,>=15.0.0
 Requires-Dist: openai
 Requires-Dist: google-genai
-Requires-Dist: omegaconf>=2.3.0
-Requires-Dist: hydra-core
-Requires-Dist: tensorboard
-Requires-Dist: peft
-Requires-Dist: codetiming>=1.4.0
-Requires-Dist: sentence-transformers>=2.0.0
-Requires-Dist: decord>=0.6.0
-Requires-Dist: lerobot>=0.4.4
 
 <div align="center">
 

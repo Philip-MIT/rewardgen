@@ -1,10 +1,8 @@
-torch==2.9.0
-torchvision==0.24.0
-torchaudio==2.9.0
-transformers==4.57.3
-vllm==0.12.0
-unsloth>=2025.10
-wandb>=0.19.1
+torch==2.10.0
+lerobot==0.6.1
+transformers==5.5.4
+qwen-vl-utils<0.1.0,>=0.0.11
+vllm==0.19.1
 pillow
 accelerate>=1.2.1
 qwen_vl_utils
@@ -15,11 +13,3 @@ matplotlib
 av<16.0.0,>=15.0.0
 openai
 google-genai
-omegaconf>=2.3.0
-hydra-core
-tensorboard
-peft
-codetiming>=1.4.0
-sentence-transformers>=2.0.0
-decord>=0.6.0
-lerobot>=0.4.4

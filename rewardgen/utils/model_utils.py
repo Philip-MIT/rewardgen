@@ -4,14 +4,14 @@ from huggingface_hub import snapshot_download
 
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "rewardgen"
 
+
 MODEL_REGISTRY = {
     "roboreward": "teetone/RoboReward-8B",
-    "robometer": "robometer/Robometer-4B",
+    "robometer": "lerobot/Robometer-4B",
     "topreward": "Qwen/Qwen3-VL-8B-Instruct",
     "sole": "Philip-MIT/SOLE-R1-8B",
     "sole-r1": "Philip-MIT/SOLE-R1-8B",
 }
-
 
 def get_model_dir(model_key: str, user_path: str | None = None) -> str:
     """

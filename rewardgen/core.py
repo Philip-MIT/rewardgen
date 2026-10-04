@@ -36,12 +36,12 @@ import numpy as np
 
 def load_video_frames(
     video_path: str,
-    num_frames: int = 100,
+    max_frames: int = 100,
     frame_indices=None,
     return_metadata: bool = False,
 ):
     """
-    Load at most `num_frames` uniformly sampled frames.
+    Load at most `max_frames` uniformly sampled frames.
     Returns:
         frames
     Or, when return_metadata=True:
@@ -60,7 +60,7 @@ def load_video_frames(
         sampled_indices = np.linspace(
             0,
             total_frames - 1,
-            num=min(num_frames, total_frames),
+            num=min(max_frames, total_frames),
             dtype=int,
         )
     else:
@@ -96,15 +96,18 @@ def get_final_video_frames(
     video_paths: list = None,
     video_path: str = None,
     ###### optional, in case you want to give two videos with different views instead of one video that has a single view or has combined side-by-side views
-    video_paths_external_view: list = None, 
-    video_paths_wrist_view: list = None,
-    video_path_external_view: str = None, 
-    video_path_wrist_view: str = None,
+    video_paths_static_view: list = None, 
+    video_paths_wrist_view1: list = None,
+    video_paths_wrist_view2: list = None,
+    video_path_static_view: str = None, 
+    video_path_wrist_view1: str = None,
+    video_path_wrist_view2: str = None,
     ######
     ###### optional, in case you want to give frames instead of video paths
     video_frames: list | None = None,
-    video_frames_external_view: list | None = None,
-    video_frames_wrist_view: list | None = None,
+    video_frames_static_view: list | None = None,
+    video_frames_wrist_view1: list | None = None,
+    video_frames_wrist_view2: list | None = None,
     ###### optional
     view_type_per_video: list = None,
     view_type: str = None,
@@ -125,14 +128,14 @@ def get_final_video_frames(
             else:
                 view_type_per_video = [view_type] * len(video_frames)
         # 
-    elif video_frames_external_view is not None or video_frames_wrist_view is not None:
-        if video_frames_external_view is not None:
-            if isinstance(video_frames_external_view[0], list) or (isinstance(video_frames_external_view[0], np.ndarray) and video_frames_external_view[0].ndim == 4):
+    elif video_frames_static_view is not None or video_frames_wrist_view1 is not None:
+        if video_frames_static_view is not None:
+            if isinstance(video_frames_static_view[0], list) or (isinstance(video_frames_static_view[0], np.ndarray) and video_frames_static_view[0].ndim == 4):
                 single_video = False
             else:
                 single_video = True
-        if video_frames_wrist_view is not None:
-            if isinstance(video_frames_wrist_view[0], list) or (isinstance(video_frames_wrist_view[0], np.ndarray) and video_frames_wrist_view[0].ndim == 4):
+        if video_frames_wrist_view1 is not None:
+            if isinstance(video_frames_wrist_view1[0], list) or (isinstance(video_frames_wrist_view1[0], np.ndarray) and video_frames_wrist_view1[0].ndim == 4):
                 single_video = False
             else:
                 single_video = True
@@ -141,7 +144,7 @@ def get_final_video_frames(
             if single_video:
                 view_type_per_video = [view_type]
             else:
-                view_type_per_video = [view_type] * max([len(video_frames_external_view or []), len(video_frames_wrist_view or [])])
+                view_type_per_video = [view_type] * max([len(video_frames_static_view or []), len(video_frames_wrist_view1 or [])])
     else:
         if video_paths is None and video_path is not None:
             video_paths = [video_path]
@@ -151,15 +154,15 @@ def get_final_video_frames(
                 view_type_per_video = [view_type] * len(video_paths)
         # 
         else:
-            if video_paths_external_view is None and video_path_external_view is not None:
-                video_paths_external_view = [video_path_external_view]
+            if video_paths_static_view is None and video_path_static_view is not None:
+                video_paths_static_view = [video_path_static_view]
                 single_video = True
-            if video_paths_wrist_view is None and video_path_wrist_view is not None:
-                video_paths_wrist_view = [video_path_wrist_view]
+            if video_paths_wrist_view1 is None and video_path_wrist_view1 is not None:
+                video_paths_wrist_view1 = [video_path_wrist_view1]
                 single_video = True
             # 
             if view_type_per_video is None and view_type is not None:
-                view_type_per_video = [view_type] * max([len(video_paths or []), len(video_paths_external_view or []), len(video_paths_wrist_view or [])])
+                view_type_per_video = [view_type] * max([len(video_paths or []), len(video_paths_static_view or []), len(video_paths_wrist_view1 or [])])
     # 
     # here1
     original_frame_counts = []
@@ -178,39 +181,60 @@ def get_final_video_frames(
             list(range(len(video))) for video in videos
         ]
         # end here1
-    elif video_frames_external_view is not None or video_frames_wrist_view is not None:
-        if video_frames_external_view is not None and video_frames_wrist_view is not None:
+    elif video_frames_static_view is not None or video_frames_wrist_view1 is not None or video_frames_wrist_view2 is not None:
+        if video_frames_wrist_view1 is None and video_frames_wrist_view2 is not None:
+            raise ValueError("video_frames_wrist_view1 is None while video_frames_wrist_view2 is not None")
+        elif video_frames_static_view is None and video_frames_wrist_view1 is not None and video_frames_wrist_view2 is not None:
+            raise ValueError("video_frames_static_view is None while video_frames_wrist_view1 and video_frames_wrist_view2 are not None")
+        elif video_frames_static_view is not None and video_frames_wrist_view1 is not None and video_frames_wrist_view2 is not None:
             if single_video:
-                video_frames_external_view = [video_frames_external_view]
-                video_frames_wrist_view = [video_frames_wrist_view]
+                video_frames_static_view = [video_frames_static_view]
+                video_frames_wrist_view1 = [video_frames_wrist_view1]
+                video_frames_wrist_view2 = [video_frames_wrist_view2]
+            if not (len(video_frames_static_view) == len(video_frames_wrist_view1) == len(video_frames_wrist_view2)):
+                raise ValueError(f"Number of videos in video_frames_static_view {len(video_frames_static_view)} does not match number of videos in video_frames_wrist_view1 {len(video_frames_wrist_view1)} or video_frames_wrist_view2 {len(video_frames_wrist_view2)}")
+            videos = []
+            for video_idx in range(len(video_frames_static_view)):
+                frames_static = video_frames_static_view[video_idx]
+                frames_wrist1 = video_frames_wrist_view1[video_idx]
+                frames_wrist2 = video_frames_wrist_view2[video_idx]
+                if not (len(frames_static) == len(frames_wrist1) == len(frames_wrist2)):
+                    raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view1 video {len(frames_wrist1)} or wrist view2 video {len(frames_wrist2)} for video_idx {video_idx}")
+                frames_combined = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
+                videos.append(frames_combined)
+            view_type_per_video = ['static+wrist+wrist'] * len(videos)
+        elif video_frames_static_view is not None and video_frames_wrist_view1 is not None:
+            if single_video:
+                video_frames_static_view = [video_frames_static_view]
+                video_frames_wrist_view1 = [video_frames_wrist_view1]
             # 
-            if len(video_frames_external_view) != len(video_frames_wrist_view):
-                raise ValueError(f"Number of videos in video_frames_external_view {len(video_frames_external_view)} does not match number of videos in video_frames_wrist_view {len(video_frames_wrist_view)}")
+            if len(video_frames_static_view) != len(video_frames_wrist_view1):
+                raise ValueError(f"Number of videos in video_frames_static_view {len(video_frames_static_view)} does not match number of videos in video_frames_wrist_view1 {len(video_frames_wrist_view1)}")
             # 
             videos = []
-            for video_idx in range(len(video_frames_external_view)):
-                frames_external = video_frames_external_view[video_idx]
-                frames_wrist = video_frames_wrist_view[video_idx]
-                if not len(frames_external) == len(frames_wrist):
-                    raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
-                frames_combined = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
+            for video_idx in range(len(video_frames_static_view)):
+                frames_static = video_frames_static_view[video_idx]
+                frames_wrist = video_frames_wrist_view1[video_idx]
+                if not len(frames_static) == len(frames_wrist):
+                    raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
+                frames_combined = [np.concatenate((frames_static[i], frames_wrist[i]), axis=1) for i in range(len(frames_static))]
                 videos.append(frames_combined)
-            view_type_per_video = ['external and wrist'] * len(videos)
+            view_type_per_video = ['static+wrist'] * len(videos)
         else:
-            if video_frames_external_view is not None and video_frames_wrist_view is None:
+            if video_frames_static_view is not None and video_frames_wrist_view1 is None:
                 if single_video:
-                    video_frames_external_view = [video_frames_external_view]
-                videos = video_frames_external_view
-                view_type_per_video = ['external'] * len(video_frames_external_view)
+                    video_frames_static_view = [video_frames_static_view]
+                videos = video_frames_static_view
+                view_type_per_video = ['static'] * len(video_frames_static_view)
                 if verbose:
-                    print(f"Using videos from video_frames_external_view with view type 'external'")
-            elif video_frames_external_view is None and video_frames_wrist_view is not None:
+                    print(f"Using videos from video_frames_static_view with view type 'static'")
+            elif video_frames_static_view is None and video_frames_wrist_view1 is not None:
                 if single_video:
-                    video_frames_wrist_view = [video_frames_wrist_view]
-                videos = video_frames_wrist_view
-                view_type_per_video = ['wrist'] * len(video_frames_wrist_view)
+                    video_frames_wrist_view1 = [video_frames_wrist_view1]
+                videos = video_frames_wrist_view1
+                view_type_per_video = ['wrist'] * len(video_frames_wrist_view1)
                 if verbose:
-                    print(f"Using videos from video_frames_wrist_view with view type 'wrist'")
+                    print(f"Using videos from video_frames_wrist_view1 with view type 'wrist'")
             else:
                 raise ValueError("video_frames cannot be None if video_paths is None")
         original_frame_counts = [len(video) for video in videos]
@@ -218,25 +242,76 @@ def get_final_video_frames(
             list(range(len(video))) for video in videos
         ]
     else:
-        if video_paths is None and video_paths_external_view is not None and video_paths_wrist_view is not None:
-            # concatenate external and wrist view videos side by side and use that as input to the model 
+        if video_paths_wrist_view1 is None and video_paths_wrist_view2 is not None:
+            raise ValueError("video_paths_wrist_view1 is None while video_paths_wrist_view2 is not None")
+        elif video_paths_static_view is None and video_paths_wrist_view1 is not None and video_paths_wrist_view2 is not None:
+            raise ValueError("video_paths_static_view is None while video_paths_wrist_view1 and video_paths_wrist_view2 are not None")
+        elif video_paths is None and video_paths_static_view is not None and video_paths_wrist_view1 is not None and video_paths_wrist_view2 is not None:
+                # concatenate static+wrist view videos side by side and use that as input to the model
+                (
+                    frames_static,
+                    sampled_indices,
+                    total_static_frames,
+                ) = load_video_frames(
+                    video_paths_static_view[video_idx],
+                    max_frames=max_loaded_frames,
+                    return_metadata=True,
+                )
+                (
+                    frames_wrist1,
+                    wrist1_sampled_indices,
+                    total_wrist1_frames,
+                ) = load_video_frames(
+                    video_paths_wrist_view1[video_idx],
+                    frame_indices=sampled_indices,
+                    return_metadata=True,
+                )
+                (
+                    frames_wrist2,
+                    wrist2_sampled_indices,
+                    total_wrist2_frames,
+                ) = load_video_frames(
+                    video_paths_wrist_view2[video_idx],
+                    frame_indices=sampled_indices,
+                    return_metadata=True,
+                )
+                if total_static_frames != total_wrist1_frames or total_static_frames != total_wrist2_frames:
+                    raise ValueError(
+                        f"External-view video has "
+                        f"{total_static_frames} frames, but wrist-view 1 "
+                        f"video has {total_wrist1_frames} frames and wrist-view 2 "
+                        f"video has {total_wrist2_frames} frames for "
+                        f"video_idx {video_idx}"
+                    )
+                if sampled_indices != wrist1_sampled_indices or sampled_indices != wrist2_sampled_indices:
+                    raise ValueError(
+                        f"Sampled indices for external-view video do not match those for wrist-view videos for "
+                        f"video_idx {video_idx}"
+                    )
+                frames_combined = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
+                videos.append(frames_combined)
+                original_frame_counts.append(total_static_frames)
+                sampled_indices_list.append(sampled_indices)
+            view_type_per_video = ['static+wrist+wrist'] * len(videos)
+        elif video_paths is None and video_paths_static_view is not None and video_paths_wrist_view1 is not None:
+            # concatenate static+wrist view videos side by side and use that as input to the model 
             videos = []
-            for video_idx in range(len(video_paths_external_view)):
+            for video_idx in range(len(video_paths_static_view)):
                 # here1
-                # frames_external = load_video_frames(video_paths_external_view[video_idx])
-                # frames_wrist = load_video_frames(video_paths_wrist_view[video_idx])
-                # if not len(frames_external) == len(frames_wrist):
-                #     raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
-                # frames_combined = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
+                # frames_static = load_video_frames(video_paths_static_view[video_idx])
+                # frames_wrist = load_video_frames(video_paths_wrist_view1[video_idx])
+                # if not len(frames_static) == len(frames_wrist):
+                #     raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
+                # frames_combined = [np.concatenate((frames_static[i], frames_wrist[i]), axis=1) for i in range(len(frames_static))]
                 # videos.append(frames_combined)
                 # 
                 (
-                    frames_external,
+                    frames_static,
                     sampled_indices,
-                    total_external_frames,
+                    total_static_frames,
                 ) = load_video_frames(
-                    video_paths_external_view[video_idx],
-                    num_frames=max_loaded_frames,
+                    video_paths_static_view[video_idx],
+                    max_frames=max_loaded_frames,
                     return_metadata=True,
                 )
                 (
@@ -244,48 +319,48 @@ def get_final_video_frames(
                     wrist_sampled_indices,
                     total_wrist_frames,
                 ) = load_video_frames(
-                    video_paths_wrist_view[video_idx],
+                    video_paths_wrist_view1[video_idx],
                     frame_indices=sampled_indices,
                     return_metadata=True,
                 )
-                if total_external_frames != total_wrist_frames:
+                if total_static_frames != total_wrist_frames:
                     raise ValueError(
                         f"External-view video has "
-                        f"{total_external_frames} frames, but wrist-view "
+                        f"{total_static_frames} frames, but wrist-view "
                         f"video has {total_wrist_frames} frames for "
                         f"video_idx {video_idx}"
                     )
                 if sampled_indices != wrist_sampled_indices:
                     raise ValueError(
-                        f"Could not decode matching external and wrist "
+                        f"Could not decode matching static+wrist "
                         f"frames for video_idx {video_idx}"
                     )
                 frames_combined = [
                     np.concatenate(
-                        (frames_external[i], frames_wrist[i]),
+                        (frames_static[i], frames_wrist[i]),
                         axis=1,
                     )
-                    for i in range(len(frames_external))
+                    for i in range(len(frames_static))
                 ]
                 videos.append(frames_combined)
-                original_frame_counts.append(total_external_frames)
+                original_frame_counts.append(total_static_frames)
                 sampled_frame_indices_list.append(sampled_indices)
                 # end here1
                 # 
-            view_type_per_video = ['external and wrist'] * len(videos)
+            view_type_per_video = ['static+wrist'] * len(videos)
         else:
-            if video_paths is None and video_paths_external_view is not None and video_paths_wrist_view is None:
-                video_paths = video_paths_external_view
-                view_type_per_video = ['external'] * len(video_paths_external_view)
+            if video_paths is None and video_paths_static_view is not None and video_paths_wrist_view1 is None:
+                video_paths = video_paths_static_view
+                view_type_per_video = ['static'] * len(video_paths_static_view)
                 if verbose:
-                    print(f"Using videos from video_paths_external_view with view type 'external'")
-            elif video_paths is None and video_paths_external_view is None and video_paths_wrist_view is not None:
-                video_paths = video_paths_wrist_view
-                view_type_per_video = ['wrist'] * len(video_paths_wrist_view)
+                    print(f"Using videos from video_paths_static_view with view type 'static'")
+            elif video_paths is None and video_paths_static_view is None and video_paths_wrist_view1 is not None:
+                video_paths = video_paths_wrist_view1
+                view_type_per_video = ['wrist'] * len(video_paths_wrist_view1)
                 if verbose:
-                    print(f"Using videos from video_paths_wrist_view with view type 'wrist'")
+                    print(f"Using videos from video_paths_wrist_view1 with view type 'wrist'")
             elif video_paths is None:
-                raise ValueError("video_paths cannot be None if video_paths_external_view and video_paths_wrist_view are both not provided")
+                raise ValueError("video_paths cannot be None if video_paths_static_view and video_paths_wrist_view1 are both not provided")
             # 
             # here1
             # videos = []
@@ -300,7 +375,7 @@ def get_final_video_frames(
                     total_frames,
                 ) = load_video_frames(
                     video_path_i,
-                    num_frames=max_loaded_frames,
+                    max_frames=max_loaded_frames,
                     return_metadata=True,
                 )
                 videos.append(frames)
@@ -309,7 +384,7 @@ def get_final_video_frames(
             # end here1
     # 
     if view_type_per_video is None:
-        view_type_per_video = ['external'] * len(videos)
+        view_type_per_video = ['static'] * len(videos)
     elif len(view_type_per_video) != len(videos):
         if len(view_type_per_video) < len(videos) and len(set(view_type_per_video)) == 1:
             if verbose:
@@ -331,195 +406,6 @@ def get_final_video_frames(
 
 
 
-def get_final_video_frames_new(
-    model: str,
-    video_paths: list = None,
-    video_path: str = None,
-    ###### optional, in case you want to give two videos with different views instead of one video that has a single view or has combined side-by-side views
-    video_paths_external_view: list = None, 
-    video_paths_wrist_view: list = None,
-    video_path_external_view: str = None, 
-    video_path_wrist_view: str = None,
-    ######
-    ###### optional, in case you want to give frames instead of video paths
-    video_frames: list | None = None,
-    video_frames_external_view: list | None = None,
-    video_frames_wrist_view: list | None = None,
-    ###### optional
-    view_type_per_video: list = None,
-    view_type: str = None,
-    max_loaded_frames: int = 100,
-    verbose: bool = True,
-): 
-    final_video_paths=None
-    final_video_paths_external_view=None
-    final_video_paths_wrist_view=None
-    videos=None
-    single_video = False
-    if video_frames is not None:
-        # if video_frames[0] is a list of frames, then we have multiple videos worth of frames. if video_frames is a single list of frames, then we have one video worth of frames.
-        if isinstance(video_frames[0], list) or (isinstance(video_frames[0], np.ndarray) and video_frames[0].ndim == 4):
-            single_video = False
-        else:
-            single_video = True
-        # 
-        if view_type_per_video is None and view_type is not None:
-            if single_video:
-                view_type_per_video = [view_type]
-            else:
-                view_type_per_video = [view_type] * len(video_frames)
-        # 
-    elif video_frames_external_view is not None or video_frames_wrist_view is not None:
-        if video_frames_external_view is not None:
-            if isinstance(video_frames_external_view[0], list) or (isinstance(video_frames_external_view[0], np.ndarray) and video_frames_external_view[0].ndim == 4):
-                single_video = False
-            else:
-                single_video = True
-        if video_frames_wrist_view is not None:
-            if isinstance(video_frames_wrist_view[0], list) or (isinstance(video_frames_wrist_view[0], np.ndarray) and video_frames_wrist_view[0].ndim == 4):
-                single_video = False
-            else:
-                single_video = True
-        # 
-        if view_type_per_video is None and view_type is not None:
-            if single_video:
-                view_type_per_video = [view_type]
-            else:
-                view_type_per_video = [view_type] * max([len(video_frames_external_view or []), len(video_frames_wrist_view or [])])
-    else:
-        if video_paths is not None:
-            final_video_paths = video_paths
-        elif video_paths is None and video_path is not None:
-            final_video_paths = [video_path]
-            single_video = True
-            # 
-            if view_type_per_video is None and view_type is not None:
-                view_type_per_video = [view_type] * len(final_video_paths)
-        # 
-        else:
-            if video_paths_external_view is None and video_path_external_view is not None:
-                final_video_paths_external_view = [video_path_external_view]
-                single_video = True
-            if video_paths_wrist_view is None and video_path_wrist_view is not None:
-                final_video_paths_wrist_view = [video_path_wrist_view]
-                single_video = True
-            # 
-            if view_type_per_video is None and view_type is not None:
-                view_type_per_video = [view_type] * max([len(final_video_paths or []), len(final_video_paths_external_view or []), len(final_video_paths_wrist_view or [])])
-    # 
-    ############ EXTRACT VIDEO FRAMES FOR ALL VIDEOS AS A LIST OF LISTS    
-    # 
-    if video_frames is not None:
-        if single_video:
-            videos = [video_frames]
-        else:
-            videos = video_frames
-    elif video_frames_external_view is not None or video_frames_wrist_view is not None:
-        if video_frames_external_view is not None and video_frames_wrist_view is not None:
-            if single_video:
-                video_frames_external_view = [video_frames_external_view]
-                video_frames_wrist_view = [video_frames_wrist_view]
-            # 
-            if len(video_frames_external_view) != len(video_frames_wrist_view):
-                raise ValueError(f"Number of videos in video_frames_external_view {len(video_frames_external_view)} does not match number of videos in video_frames_wrist_view {len(video_frames_wrist_view)}")
-            # 
-            if model in ['sole-r1']:
-                videos = []
-                for video_idx in range(len(video_frames_external_view)):
-                    frames_external = video_frames_external_view[video_idx]
-                    frames_wrist = video_frames_wrist_view[video_idx]
-                    if not len(frames_external) == len(frames_wrist):
-                        raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
-                    frames_combined = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
-                    videos.append(frames_combined)
-                view_type_per_video = ['external and wrist'] * len(videos)
-            else:
-                if video_frames_external_view is not None and video_frames_wrist_view is not None:
-                    raise ValueError(f"Both video_frames_external_view and video_frames_wrist_view are provided, but model '{model}' does not support both views. Please provide only one view.")
-        else:
-            if video_frames_external_view is not None and video_frames_wrist_view is None:
-                if single_video:
-                    video_frames_external_view = [video_frames_external_view]
-                videos = video_frames_external_view
-                view_type_per_video = ['external'] * len(video_frames_external_view)
-                if verbose:
-                    print(f"Using videos from video_frames_external_view with view type 'external'")
-            elif video_frames_external_view is None and video_frames_wrist_view is not None:
-                if single_video:
-                    video_frames_wrist_view = [video_frames_wrist_view]
-                videos = video_frames_wrist_view
-                view_type_per_video = ['wrist'] * len(video_frames_wrist_view)
-                if verbose:
-                    print(f"Using videos from video_frames_wrist_view with view type 'wrist'")
-            else:
-                raise ValueError("video_frames cannot be None if video_paths is None")
-    else:
-        if final_video_paths is None and final_video_paths_external_view is not None and final_video_paths_wrist_view is not None:
-            # concatenate external and wrist view videos side by side and use that as input to the model 
-            # if False:
-            #     videos = []
-            #     for video_idx in range(len(video_paths_external_view)):
-            #         frames_external = load_video_frames(video_paths_external_view[video_idx])
-            #         frames_wrist = load_video_frames(video_paths_wrist_view[video_idx])
-            #         if not len(frames_external) == len(frames_wrist):
-            #             raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)} for video_idx {video_idx}")
-            #         frames_combined = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
-            #         videos.append(frames_combined)
-            if model in ['sole-r1']:
-                view_type_per_video = ['external and wrist'] * len(final_video_paths_external_view)
-            else: 
-                raise ValueError(f"Both video_paths_external_view and video_paths_wrist_view are provided, but model '{model}' does not support both views. Please provide only one view.")
-        else:
-            if final_video_paths is None and final_video_paths_external_view is not None and final_video_paths_wrist_view is None:
-                final_video_paths = final_video_paths_external_view
-                final_video_paths_external_view = None
-                view_type_per_video = ['external'] * len(final_video_paths)
-                if verbose:
-                    print(f"Using videos from video_paths_external_view with view type 'external'")
-            elif final_video_paths is None and final_video_paths_external_view is None and final_video_paths_wrist_view is not None:
-                final_video_paths = final_video_paths_wrist_view
-                final_video_paths_wrist_view = None
-                view_type_per_video = ['wrist'] * len(final_video_paths)
-                if verbose:
-                    print(f"Using videos from video_paths_wrist_view with view type 'wrist'")
-            elif final_video_paths is None:
-                raise ValueError("video_paths cannot be None if video_paths_external_view and video_paths_wrist_view are both not provided")
-            # 
-            # videos = []
-            # for video_path in video_paths:
-            #     frames = load_video_frames(video_path)
-            #     videos.append(frames)
-    # 
-    if not videos and not final_video_paths and not final_video_paths_external_view and not final_video_paths_wrist_view:
-        raise ValueError("No videos were provided.")
-    elif not videos is None:
-        video_count = len(videos)
-    elif not final_video_paths is None:
-        video_count = len(final_video_paths)
-    elif not final_video_paths_external_view is None:
-        video_count = len(final_video_paths_external_view)
-    elif not final_video_paths_wrist_view is None:
-        video_count = len(final_video_paths_wrist_view)
-    # 
-    if view_type_per_video is None and not videos is None:
-        view_type_per_video = ['external'] * len(videos)
-    elif view_type_per_video is None and final_video_paths is not None:
-        view_type_per_video = ['external'] * len(final_video_paths)
-    elif view_type_per_video is None and final_video_paths_external_view is not None:
-        view_type_per_video = ['external'] * len(final_video_paths_external_view)
-    elif view_type_per_video is None and final_video_paths_wrist_view is not None:
-        view_type_per_video = ['wrist'] * len(final_video_paths_wrist_view)
-    # 
-    elif len(view_type_per_video) != video_count:
-        if len(view_type_per_video) < video_count and len(set(view_type_per_video)) == 1:
-            if verbose:
-                print(f"Extending view_type_per_video (length {len(view_type_per_video)}) to match number of videos (length {video_count})")
-            view_type_per_video = view_type_per_video * video_count
-        else:
-            raise ValueError(f"Length of view_type_per_video ({len(view_type_per_video)}) does not match number of videos ({video_count})")
-    # 
-    return videos, final_video_paths, final_video_paths_external_view, final_video_paths_wrist_view, view_type_per_video, single_video, video_count
-
 
 CURRENT_MODEL = None
 
@@ -531,15 +417,18 @@ def generate(
     video_paths: list = None,
     video_path: str = None,
     ###### optionl, in case you want to give two videos with different views instead of one video that has a single view or has combined side-by-side views
-    video_paths_external_view: list = None, 
-    video_paths_wrist_view: list = None,
-    video_path_external_view: str = None, 
-    video_path_wrist_view: str = None,
+    video_paths_static_view: list = None, 
+    video_paths_wrist_view1: list = None,
+    video_paths_wrist_view2: list = None,
+    video_path_static_view: str = None, 
+    video_path_wrist_view1: str = None,
+    video_path_wrist_view2: str = None,
     ######
     ###### optionl, in case you want to give frames instead of video paths
     video_frames: list | np.ndarray | None = None,
-    video_frames_external_view: list | np.ndarray | None = None,
-    video_frames_wrist_view: list | np.ndarray | None = None,
+    video_frames_static_view: list | np.ndarray | None = None,
+    video_frames_wrist_view1: list | np.ndarray | None = None,
+    video_frames_wrist_view2: list | np.ndarray | None = None,
     ######
     ###### optional
     view_type_per_video: list = None,
@@ -553,6 +442,7 @@ def generate(
     ###### for local models
     model_path: str = None,
     ######
+    debug=False,
 ):
     # 
     global CURRENT_MODEL
@@ -569,7 +459,7 @@ def generate(
             from rewardgen.robometer.rg_robometer import unload_model as unload_robometer
             unload_robometer()
         # 
-        elif CURRENT_MODEL.lower() == 'sole-r1':
+        elif 'sole' in CURRENT_MODEL.lower():
             from rewardgen.sole import unload_model as unload_sole
             unload_sole()
         # 
@@ -627,13 +517,16 @@ def generate(
             for video_frames_i in video_frames
         ]
     # 
-    if isinstance(video_frames_external_view, np.ndarray):
-        video_frames_external_view = list(video_frames_external_view)
+    if isinstance(video_frames_static_view, np.ndarray):
+        video_frames_static_view = list(video_frames_static_view)
     # 
-    if isinstance(video_frames_wrist_view, np.ndarray):
-        video_frames_wrist_view = list(video_frames_wrist_view)
+    if isinstance(video_frames_wrist_view1, np.ndarray):
+        video_frames_wrist_view1 = list(video_frames_wrist_view1)
     # 
-    # videos, final_video_paths, final_video_paths_external_view, final_video_paths_wrist_view, view_type_per_video, single_video = get_final_video_frames(
+    if isinstance(video_frames_wrist_view2, np.ndarray):
+        video_frames_wrist_view2 = list(video_frames_wrist_view2)
+    # 
+    # videos, final_video_paths, final_video_paths_static_view, final_video_paths_wrist_view1, view_type_per_video, single_video = get_final_video_frames(
     (
         videos,
         view_type_per_video,
@@ -643,13 +536,16 @@ def generate(
     ) = get_final_video_frames(
         video_paths=video_paths,
         video_path=video_path,
-        video_paths_external_view=video_paths_external_view,
-        video_paths_wrist_view=video_paths_wrist_view,
-        video_path_external_view=video_path_external_view,
-        video_path_wrist_view=video_path_wrist_view,
+        video_paths_static_view=video_paths_static_view,
+        video_paths_wrist_view1=video_paths_wrist_view1,
+        video_paths_wrist_view2=video_paths_wrist_view2,
+        video_path_static_view=video_path_static_view,
+        video_path_wrist_view1=video_path_wrist_view1,
+        video_path_wrist_view2=video_path_wrist_view2,
         video_frames=video_frames,
-        video_frames_external_view=video_frames_external_view,
-        video_frames_wrist_view=video_frames_wrist_view,
+        video_frames_static_view=video_frames_static_view,
+        video_frames_wrist_view1=video_frames_wrist_view1,
+        video_frames_wrist_view2=video_frames_wrist_view2,
         view_type_per_video=view_type_per_video,
         view_type=view_type,
         verbose=verbose,
@@ -701,8 +597,8 @@ def generate(
     #     if video_path is not None and 'test_videos' in video_path:
     #         if frame_width == 2*frame_height:
     #             for video_idx in range(len(downsampled_videos)):
-    #                 # extrect left half of each frame for 'external' (default) and right half for 'wrist' since the video has side-by-side views and we only want to use the external view
-    #                 if view_type_per_video[video_idx] is None or view_type_per_video[video_idx] == 'external':  
+    #                 # extrect left half of each frame for 'static' (default) and right half for 'wrist' since the video has side-by-side views and we only want to use the external view
+    #                 if view_type_per_video[video_idx] is None or view_type_per_video[video_idx] == 'static':  
     #                     frames_final=[]
     #                     for i in range(len(downsampled_videos[video_idx])):
     #                         frames_final.append(downsampled_videos[video_idx][i][:, :downsampled_videos[video_idx][i].shape[1]//2, :])
@@ -732,7 +628,7 @@ def generate(
             rewards.append(rewards_video_i)
             output_text.append(output_text_video_i)
         # 
-    elif model.lower() == 'sole-r1': 
+    elif 'sole' in model.lower(): 
         from rewardgen.sole import sole
         # from sole import load_model
         # load_model()
@@ -759,7 +655,10 @@ def generate(
                 print(f"Generating rewards for batch {chunk_idx+1}/{len(downsampled_videos_chunks_max_5)} of videos (max_batch_size = {max_batch_size}) using SOLE-R1")
             downsampled_videos_chunk = downsampled_videos_chunks_max_5[chunk_idx]
             view_type_per_video_chunk = view_type_per_video_chunks_max_5[chunk_idx]
-            rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose)
+            if model.lower() == 'sole-r1':
+                rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose)
+            else:
+                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose, debug=debug)
             rewards += rewards_chunk
             output_text += output_text_chunk
         # 
@@ -964,11 +863,12 @@ def resize_and_pad_to_target(
 
 def video_plot(outputs, plot_save_path: str, 
                video_path=None, 
-                video_path_external_view: str = None, 
-                video_path_wrist_view: str = None,
+                video_path_static_view: str = None, 
+                video_path_wrist_view1: str = None,
+                video_path_wrist_view2: str = None,
                 video_frames: list | np.ndarray | None = None,
-                video_frames_external_view: list | np.ndarray | None = None,
-                video_frames_wrist_view: list | np.ndarray | None = None,
+                video_frames_static_view: list | np.ndarray | None = None,
+                video_frames_wrist_view1: list | np.ndarray | None = None,
                 view_type: str = None,
                 task_description: str =None, 
                 show_all_frames: bool = False,
@@ -979,19 +879,23 @@ def video_plot(outputs, plot_save_path: str,
     # 
     if isinstance(video_frames, np.ndarray):
         video_frames = list(video_frames)
-    if isinstance(video_frames_external_view, np.ndarray):
-        video_frames_external_view = list(video_frames_external_view)
-    if isinstance(video_frames_wrist_view, np.ndarray):
-        video_frames_wrist_view = list(video_frames_wrist_view)
-    if video_path is None and video_path_external_view is None and video_path_wrist_view is None and video_frames is None:
+    if isinstance(video_frames_static_view, np.ndarray):
+        video_frames_static_view = list(video_frames_static_view)
+    if isinstance(video_frames_wrist_view1, np.ndarray):
+        video_frames_wrist_view1 = list(video_frames_wrist_view1)
+    if isinstance(video_frames_wrist_view2, np.ndarray):
+        video_frames_wrist_view2 = list(video_frames_wrist_view2)
+    if video_path is None and video_path_static_view is None and video_path_wrist_view1 is None and video_frames is None:
         raise ValueError("At least one video source or video frames must be provided")
     # 
     if isinstance(video_frames, np.ndarray):
         video_frames = list(video_frames)
-    if isinstance(video_frames_external_view, np.ndarray):
-        video_frames_external_view = list(video_frames_external_view)
-    if isinstance(video_frames_wrist_view, np.ndarray):
-        video_frames_wrist_view = list(video_frames_wrist_view)
+    if isinstance(video_frames_static_view, np.ndarray):
+        video_frames_static_view = list(video_frames_static_view)
+    if isinstance(video_frames_wrist_view1, np.ndarray):
+        video_frames_wrist_view1 = list(video_frames_wrist_view1)
+    if isinstance(video_frames_wrist_view2, np.ndarray):
+        video_frames_wrist_view2 = list(video_frames_wrist_view2)
     # 
     outputs = copy.deepcopy(outputs)
     for output in outputs:
@@ -1008,26 +912,36 @@ def video_plot(outputs, plot_save_path: str,
                 json.dump(outputs, f)
     # 
     if video_frames is None:
-        if video_path is None and video_path_external_view is not None and video_path_wrist_view is not None:
-            frames_external = load_video_frames(video_path_external_view)
-            frames_wrist = load_video_frames(video_path_wrist_view)
-            if not len(frames_external) == len(frames_wrist):
-                raise ValueError(f"Number of frames in external view video {len(frames_external)} does not match number of frames in wrist view video {len(frames_wrist)}")
-            frame_list = [np.concatenate((frames_external[i], frames_wrist[i]), axis=1) for i in range(len(frames_external))]
-            view_type = 'external and wrist'
+        if video_path_wrist_view1 is None and video_path_wrist_view2 is not None:
+            raise ValueError("video_path_wrist_view1 cannot be None if video_path_wrist_view2 is provided")
+        elif video_path is None and video_path_static_view is not None and video_path_wrist_view1 is not None and video_path_wrist_view2 is not None:
+            frames_static = load_video_frames(video_path_static_view)
+            frames_wrist1 = load_video_frames(video_path_wrist_view1)
+            frames_wrist2 = load_video_frames(video_path_wrist_view2)
+            if not (len(frames_static) == len(frames_wrist1) == len(frames_wrist2)):
+                raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view1 video {len(frames_wrist1)} or wrist view2 video {len(frames_wrist2)}")
+            frame_list = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
+            view_type = 'static+wrist+wrist'
+        elif video_path is None and video_path_static_view is not None and video_path_wrist_view1 is not None:
+            frames_static = load_video_frames(video_path_static_view)
+            frames_wrist = load_video_frames(video_path_wrist_view1)
+            if not len(frames_static) == len(frames_wrist):
+                raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view video {len(frames_wrist)}")
+            frame_list = [np.concatenate((frames_static[i], frames_wrist[i]), axis=1) for i in range(len(frames_static))]
+            view_type = 'static+wrist'
         else:
-            if video_path is None and video_path_external_view is not None and video_path_wrist_view is None:
-                video_path = video_path_external_view
-                view_type = 'external'
+            if video_path is None and video_path_static_view is not None and video_path_wrist_view1 is None:
+                video_path = video_path_static_view
+                view_type = 'static'
                 if verbose:
-                    print(f"Using videos from video_path_external_view with view type 'external'")
-            elif video_path is None and video_path_external_view is None and video_path_wrist_view is not None:
-                video_path = video_path_wrist_view
+                    print(f"Using videos from video_path_static_view with view type 'static'")
+            elif video_path is None and video_path_static_view is None and video_path_wrist_view1 is not None:
+                video_path = video_path_wrist_view1
                 view_type = 'wrist'
                 if verbose:
-                    print(f"Using videos from video_path_wrist_view with view type 'wrist'")
+                    print(f"Using videos from video_path_wrist_view1 with view type 'wrist'")
             elif video_path is None:
-                raise ValueError("video_path cannot be None if video_path_external_view and video_path_wrist_view are both not provided (and video_frames is also None)")
+                raise ValueError("video_path cannot be None if video_path_static_view and video_path_wrist_view1 are both not provided (and video_frames is also None)")
             # 
             frame_list = load_video_frames(video_path)
     else:
@@ -1098,7 +1012,7 @@ def video_plot(outputs, plot_save_path: str,
         frame = resize_and_pad_to_target(frame, target_height=target_height, min_width=target_height, max_width=target_height*2)
         frame_height, frame_width = frame.shape[:2]
         # 
-        # if view_type in ['external and wrist']:
+        # if view_type in ['static+wrist']:
         #     if show_output_text:
         #         output_width = target_height*4
         #     else:
@@ -1373,78 +1287,85 @@ def video_plot(outputs, plot_save_path: str,
 
 
 
-
- 
-   
-def extract_annotation(lerobot_dataset, model, annotation_version=None, annotation_subdir=None):
-    # 
-    if annotation_version is None:
-        annotation_version = "v1"
-    # 
-    if annotation_subdir is None:
-        annotation_subdir = lerobot_dataset.root / "with_reward"
-    # 
-    if not os.path.exists(annotation_subdir):
-        raise ValueError(f"Expected annotation subdir {annotation_subdir} does not exist")
+def extract_annotation(lerobot_dataset, progress_file, downsample_to=None, reward_column_name: str = "progress_sparse",):
     # 
     import pandas as pd
     # parquet_path = os.path.join(lerobot_dataset.root, "data/chunk-000/file-000.parquet")
-    parquet_path = os.path.join(annotation_subdir, "data/chunk-000/file-000.parquet")
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(progress_file)
     episode_lengths = df.groupby("episode_index").size().values
     # 
     rewards_by_episode = []
     current_episode = []
     episode_id = 0
     step_counter = 0
-    reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
+    # reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
     rewards_column = df[reward_column_name].values
     # len(rewards_column)
     # 
+    downsample_idx_list_list=[]
     for i in range(len(rewards_column)):
         current_episode.append(rewards_column[i])
         step_counter += 1
         if step_counter == episode_lengths[episode_id]:
+            if downsample_to is not None and downsample_to > 0 and downsample_to < len(current_episode):
+                # downsample current_episode to downsample_to length
+                downsample_idx_list = np.linspace(0, len(current_episode) - 1, downsample_to).astype(int)
+                current_episode = [current_episode[idx] for idx in downsample_idx_list]
             rewards_by_episode.append(np.array(current_episode).tolist())
+            downsample_idx_list_list.append(downsample_idx_list)
             current_episode = []
             step_counter = 0
             episode_id += 1
     # 
-    return rewards_by_episode
+    return rewards_by_episode, downsample_idx_list_list
 
-def extract_frames(lerobot_dataset, observation_name=None):
-    if observation_name is None:
-        observation_name = set_observation_name(video_paths)
+
+def extract_frames(lerobot_dataset, image_key=None, downsample_to=None, verbose=False):
     # 
-    paths = lerobot_dataset.get_episodes_file_paths()
-    video_paths = [p for p in paths if p.endswith(".mp4")]
-    video_paths = [os.path.join(lerobot_dataset.root, p) for p in video_paths]
+    # paths = lerobot_dataset.get_episodes_file_paths()
+    # video_paths = [p for p in paths if p.endswith(".mp4")]
+    # video_paths = [os.path.join(lerobot_dataset.root, p) for p in video_paths]
+    if image_key is None:
+        image_key = set_observation_name(lerobot_dataset.meta.video_keys)
     # 
-    import pandas as pd
-    parquet_path = os.path.join(lerobot_dataset.root, "data/chunk-000/file-000.parquet")
-    df = pd.read_parquet(parquet_path)
-    episode_lengths = df.groupby("episode_index").size().values
-    # 
-    import av
+    if verbose:
+        print(f'Extracting frames from {image_key}')
     frames_by_episode = []
-    current_episode = []
-    episode_id = 0
-    frame_counter = 0
-    for video_path_idx in range(len(video_paths)):
-        if observation_name in video_paths[video_path_idx]:
-            container = av.open(video_paths[video_path_idx])
-            for frame in container.decode(video=0):
-                img = frame.to_ndarray(format="rgb24")
-                current_episode.append(img)
-                frame_counter += 1
-                if frame_counter == episode_lengths[episode_id]:
-                    frames_by_episode.append(current_episode)
-                    current_episode = []
-                    frame_counter = 0
-                    episode_id += 1
-                    # break
-    # 
-    return frames_by_episode
+    downsample_idx_list_list = []
+    for episode in lerobot_dataset.meta.episodes:
+        episode_start = int(episode["dataset_from_index"])
+        episode_end = int(episode["dataset_to_index"])
+        downsample_idx_list = np.linspace(
+            episode_start,
+            episode_end - 1,
+            num=min(downsample_to, episode_end - episode_start),
+            dtype=int,
+        )
+        episode_frames = []
+        # for dataset_index in range(episode_start, episode_end):
+        for dataset_index in downsample_idx_list:
+            frame = lerobot_dataset[dataset_index][image_key]
+            if isinstance(frame, torch.Tensor):
+                # LeRobot returns C,H,W; RewardGen expects H,W,C.
+                frame = (
+                    frame.detach()
+                    .cpu()
+                    .permute(1, 2, 0)
+                    .numpy()
+                )
+                if np.issubdtype(frame.dtype, np.floating):
+                    if frame.size and frame.max() <= 1.0:
+                        frame = frame * 255.0
+                frame = np.clip(frame, 0, 255).astype(np.uint8)
+            episode_frames.append(frame)
+        # if downsample_to is not None and downsample_to > 0 and downsample_to < len(episode_frames) and downsample_to < max_frames:
+        #     # downsample episode_frames to downsample_to length
+        #     indices = np.linspace(0, len(episode_frames) - 1, downsample_to).astype(int)
+        #     episode_frames = [episode_frames[idx] for idx in indices]
+        frames_by_episode.append(episode_frames)
+        downsample_idx_list_list.append(downsample_idx_list)
+    return frames_by_episode, downsample_idx_list_list
+
 
 
 def set_observation_name(video_paths):
@@ -1452,6 +1373,8 @@ def set_observation_name(video_paths):
         observation_name = 'observation.images.side'
     elif any('observation.images.top' in x for x in video_paths):
         observation_name = 'observation.images.top'
+    elif any('observation.images.image' in x for x in video_paths):
+        observation_name = 'observation.images.image'
     else:
         observation_name = video_paths[0].split('videos/')[-1].split('/')[0]
     return observation_name
@@ -1459,68 +1382,124 @@ def set_observation_name(video_paths):
 
 def annotate(
     model: str,
-    task_description: str,
     lerobot_dataset,
-    observation_name: str = None,
-    annotation_version: str = None,
+    output_path,
+    task_description: str = None,
+    reward_column_name: str = "progress_sparse",
+    image_key: str = None,
+    image_key_static_view: str = None,
+    image_key_wrist_view1: str = None,
+    image_key_wrist_view2: str = None,
     downsample_to: int = 10,
-    # context_window: str = None,
     ###### for API-based models
     key: str = None,
     ######
     ###### optional, for local models
     model_path: str = None,
-    annotation_subdir = None,
     verbose: bool = True,
 ):
-    paths = lerobot_dataset.get_episodes_file_paths()
-    video_paths = [p for p in paths if p.endswith(".mp4")]
-    video_paths = [os.path.join(lerobot_dataset.root, p) for p in video_paths]
-    # 
-    if observation_name is None:
-        observation_name = set_observation_name(video_paths)
-    # 
-    if 'wrist' in observation_name or 'hand' in observation_name:
-        view_type = 'wrist'
-    else:
-        view_type = 'external'
-    # 
-    if annotation_version is None:
-        annotation_version = "v1"
-    # 
-    if annotation_subdir is None:
-        annotation_subdir = lerobot_dataset.root / "with_reward"
-    # 
     import av
-    frames_by_episode = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=observation_name)
+    if image_key is None and image_key_static_view is None and image_key_wrist_view1 is None:
+        raise ValueError(f"No image key is provided.")
     # 
-    if verbose:
-        print(f"Extracted frames for {len(frames_by_episode)} episodes with observation name '{observation_name}' and view type '{view_type}'")
+    if not 'sole' in model.lower():
+        if image_key_static_view is not None and image_key_wrist_view1 is not None:
+            raise ValueError(f"Both image_key_static_view and image_key_wrist_view1 are provided, but model '{model}' does not support multiple views at once. Please provide only one view.")
+    # 
+    if task_description is None:
+        task_description = dataset[0].get('task')
+        if task_description is None:
+            print('WARNING: no task description found, setting default task description: "Complete the task."')
+            task_description = "Complete the task."
+    # 
+    # paths = lerobot_dataset.get_episodes_file_paths()
+    # video_paths = [p for p in paths if p.endswith(".mp4")]
+    # video_paths = [os.path.join(lerobot_dataset.root, p) for p in video_paths]
+    # 
+    video_frames_static_view = None
+    video_frames_wrist_view1 = None
+    video_frames_wrist_view2 = None
+    # if image_key_static_view is None and image_key_wrist_view1 is None:
+    #     image_key_static_view = set_observation_name(video_paths)
+    #     view_type = "external"
+    #     video_frames_static_view = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_static_view)
+    if image_key is not None and (not image_key_static_view is None or not image_key_wrist_view1 is None or not image_key_wrist_view2 is None):
+        raise ValueError('Please either set image_key alone or specifically set image_key_static_view, image_key_wrist_view1, or image_key_wrist_view2.')
+    elif image_key is not None:
+        if 'wrist' in image_key or 'hand' in image_key:
+            view_type = 'wrist'
+            video_frames_wrist_view1, downsample_idx_list_list = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key, downsample_to=downsample_to, verbose=verbose)
+        else:
+            view_type = 'static'
+            video_frames_static_view, downsample_idx_list_list = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key, downsample_to=downsample_to, verbose=verbose)
+    elif image_key_wrist_view1 is None and not image_key_wrist_view2 is None:
+        raise ValueError('image_key_wrist_view1 is None while image_key_wrist_view2 is not None.')
+    elif not image_key_static_view is None and not image_key_wrist_view1 is None and not image_key_wrist_view2 is None:
+        view_type = "static+wrist+wrist"
+        video_frames_static_view, downsample_idx_list_list_static_view = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_static_view, downsample_to=downsample_to, verbose=verbose)
+        video_frames_wrist_view1, downsample_idx_list_list_wrist_view1 = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_wrist_view1, downsample_to=downsample_to, verbose=verbose)
+        video_frames_wrist_view2, downsample_idx_list_list_wrist_view2 = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_wrist_view2, downsample_to=downsample_to, verbose=verbose)
+        if not downsample_idx_list_list_static_view == downsample_idx_list_list_wrist_view1 or not downsample_idx_list_list_static_view == downsample_idx_list_list_wrist_view2:
+            raise ValueError('video_frames_static_view, video_frames_wrist_view1, and video_frames_wrist_view2 must have same frame lengths.')
+        else:
+            downsample_idx_list_list=downsample_idx_list_list_static_view
+    elif not image_key_static_view is None and not image_key_wrist_view1 is None:
+        view_type = "static+wrist"
+        video_frames_static_view, downsample_idx_list_list_static_view = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_static_view, downsample_to=downsample_to, verbose=verbose)
+        video_frames_wrist_view1, downsample_idx_list_list_wrist_view1 = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_wrist_view1, downsample_to=downsample_to, verbose=verbose)
+        if not downsample_idx_list_list_static_view == downsample_idx_list_list_wrist_view1:
+            raise ValueError('video_frames_static_view and video_frames_wrist_view1 must have same frame lengths.')
+        else:
+            downsample_idx_list_list=downsample_idx_list_list_static_view
+    elif image_key_static_view is None and not image_key_wrist_view1 is None:
+        view_type = 'wrist'
+        video_frames_wrist_view1, downsample_idx_list_list = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_wrist_view1, downsample_to=downsample_to, verbose=verbose)
+    else:
+        view_type = 'static'
+        video_frames_static_view, downsample_idx_list_list = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key_static_view, downsample_to=downsample_to, verbose=verbose)
+    # 
+    if not 'sole' in model.lower():
+        if video_frames_static_view is not None:
+            video_frames_final_view = video_frames_static_view
+        elif video_frames_wrist_view1 is not None:
+            video_frames_final_view = video_frames_wrist_view1  
+    # 
+    # if 'wrist' in image_key or 'hand' in image_key:
+    #     view_type = 'wrist'
+    # else:
+    #     view_type = 'static'
+    # 
+    # if annotation_version is None:
+    #     annotation_version = "v1"
+    # 
+    # if annotation_subdir is None:
+    #     annotation_subdir = lerobot_dataset.root / "with_reward"
+    # 
+    # import av
+    # frames_by_episode = extract_frames(lerobot_dataset=lerobot_dataset, image_key=image_key)
+    # 
+    # if verbose:
+    #     print(f"Extracted frames for {len(frames_by_episode)} episodes with observation name '{image_key}' and view type '{view_type}'")
     # 
     rewards = None
     output_text = None
     success_probs = None
-    if model.lower() in ["roboreward", "topreward"]:
+    if model.lower() in ["roboreward", "topreward", "robometer"]:
         response = generate(
             model=model,  
             task_description=task_description, 
-            video_frames=frames_by_episode, 
+            # video_frames=frames_by_episode, 
+            video_frames=video_frames_final_view, 
             view_type=view_type, 
             downsample_to=downsample_to,
         )
-    elif model.lower() == "robometer":
+    elif "sole" in model.lower():
         response = generate(
             model=model,  
             task_description=task_description, 
-            video_frames=frames_by_episode, 
-            view_type=view_type, 
-            downsample_to=downsample_to,
-        )
-    elif model.lower() == "sole-r1":
-        response = generate(
-            model=model,  
-            task_description=task_description, 
-            video_frames=frames_by_episode, 
+            video_frames_static_view=video_frames_static_view,
+            video_frames_wrist_view1=video_frames_wrist_view1,
+            video_frames_wrist_view2=video_frames_wrist_view2,
             view_type=view_type, 
             downsample_to=downsample_to,
         )
@@ -1528,91 +1507,283 @@ def annotate(
         response = generate(
             model=model,  
             task_description=task_description, 
-            video_frames=frames_by_episode, 
+            video_frames=video_frames_final_view, 
             view_type=view_type, 
             downsample_to=downsample_to,
             key=key
         )
     # 
-    # convert rewards to numpy array and flatten to 1D array of length num_frames
+    # convert rewards to numpy array and flatten to 1D array of length max_frames
     # reward_values = np.concatenate(rewards).astype(np.float32)
-    reward_values = np.concatenate(response.rewards).astype(np.float32).reshape(-1, 1)
-    # reward_values = np.random.randn(num_frames, 1).astype(np.float32)
-    # reward_values.shape
+    from pathlib import Path
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    model_name = model.lower()
+    all_index: list[int] = []
+    all_episode: list[int] = []
+    all_frame: list[int] = []
+    all_progress: list[float] = []
+    for episode_idx, episode_rewards in enumerate(response.rewards):
+        episode = lerobot_dataset.meta.episodes[episode_idx]
+        episode_start = int(episode["dataset_from_index"])
+        episode_end = int(episode["dataset_to_index"])
+        episode_length = episode_end - episode_start
+        # 
+        # interpolate back to the full set of rewards
+        local_downsample_idx_list = [x-downsample_idx_list_list[episode_idx][0] for x in downsample_idx_list_list[episode_idx]]
+        target_indices = np.arange(episode_end-episode_start)
+        x = np.asarray(local_downsample_idx_list, dtype=float)
+        y = np.asarray(episode_rewards, dtype=float)
+        interp_rewards = np.interp(target_indices, x, y,)
+        # 
+        rewards = np.asarray(
+            interp_rewards,
+            dtype=np.float32,
+        ).reshape(-1)
+        if len(rewards) != episode_length:
+            raise RuntimeError(
+                f"Episode {episode_idx} has {episode_length} frames, "
+                f"but RewardGen produced {len(rewards)} rewards"
+            )
+        # 
+        for frame_idx, progress in enumerate(rewards):
+            all_index.append(episode_start + frame_idx)
+            all_episode.append(episode_idx)
+            all_frame.append(frame_idx)
+            all_progress.append(float(progress))
     # 
-    reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
-    reward_feature_info = {
-        "dtype": "float32",
-        "shape": (1,),
-        "names": None,
-    }
-    features = {
-        reward_column_name: (reward_values, reward_feature_info),
-    }
-    # if not output_text is None:
-    #     output_text_column_name = f"output_text_{model}_{annotation_version}"
-    # if not success_probs is None:
-    #     success_probs_column_name = f"success_probs_{model}_{annotation_version}"
+    table = pa.table(
+        {
+            "index": np.asarray(all_index, dtype=np.int64),
+            "episode_index": np.asarray(
+                all_episode,
+                dtype=np.int64,
+            ),
+            "frame_index": np.asarray(
+                all_frame,
+                dtype=np.int64,
+            ),
+            reward_column_name: np.asarray(
+                all_progress,
+                dtype=np.float32,
+            ),
+        }
+    )
+    metadata: dict[bytes, bytes] = {}
+    if model_path is not None:
+        metadata[b"reward_model_path"] = str(model_path).encode()
+    if metadata:
+        table = table.replace_schema_metadata(metadata)
     # 
-    from lerobot.datasets.dataset_tools import add_features
-    num_frames = lerobot_dataset.meta.total_frames
-    # 
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table, output_path)
     if verbose:
-        print(f"Adding reward annotations to dataset with {num_frames} frames using feature name '{reward_column_name}'")
-        print(f"Output directory: {str(annotation_subdir)}")
-    # 
-    # if annotation_subdir already exists, read this as current dataset
-    # if os.path.exists(annotation_subdir):
-    #     from lerobot.datasets.lerobot_dataset import LeRobotDataset
-    #     current_dataset = LeRobotDataset(annotation_subdir, video_backend="pyav")
-    # else:
-    #     current_dataset = lerobot_dataset
-    # 
-    # if os.path.exists('/data/sls/scratch/pschro/.cache/huggingface/lerobot/jackvial/so101_pickplace_recap_merged_v2/with_reward'):
-    if os.path.exists(annotation_subdir):
-        # mkdir annotation_subdir_tmp
-        import shutil
-        if os.path.exists(f"{annotation_subdir}_tmp"):
-            shutil.rmtree(f"{annotation_subdir}_tmp")
-        shutil.move(annotation_subdir, f"{annotation_subdir}_tmp")
-        # 
-        from lerobot.datasets.lerobot_dataset import LeRobotDataset
-        current_dataset = LeRobotDataset(f"{annotation_subdir}_tmp", video_backend="pyav")
-        # 
-        import pandas as pd
-        current_df = pd.read_parquet(os.path.join(current_dataset.root, "data/chunk-000/file-000.parquet"))
-        # if reward_column_name already exists in current_df, remove it and save the modified parquet file back to disk
-        if reward_column_name in current_df.columns:
-            current_df = current_df.drop(columns=[reward_column_name])
-            current_df.to_parquet(os.path.join(current_dataset.root, "data/chunk-000/file-000.parquet"), index=False)
-        # 
-        # f"{annotation_subdir}_tmp" -> annotation_subdir
-        new_dataset = add_features(
-            dataset=current_dataset,
-            features=features,
-            # output_dir=sample_dataset.root / "with_reward",
-            output_dir = annotation_subdir
-            # output_dir = f'{str(annotation_subdir)}_tmp'
+        print(
+            f"Saved {len(table)} per-frame rewards to {output_path}"
         )
-        # move the new dataset to the original with_reward directory
-        # os.system(f"rm -rf {str(annotation_subdir)}")
-        # os.system(f"mv {str(annotation_subdir)}_tmp {str(annotation_subdir)}")
-        # change the new dataset root to the original with_reward directory
-        new_dataset.root = str(annotation_subdir)
-    else:
-        current_dataset = lerobot_dataset
-        # original dir -> annotation_subdir
-        new_dataset = add_features(
-            dataset=current_dataset,
-            features=features,
-            output_dir=annotation_subdir,
-        )
-    # new_dataset.root
-    # 
-    assert reward_values.shape[0] == num_frames, f"Number of reward values {reward_values.shape[0]} does not match number of frames {num_frames}"
-    assert reward_column_name in new_dataset.meta.features
-    assert new_dataset.meta.features[reward_column_name] == reward_feature_info
-    assert len(new_dataset) == num_frames
+    return output_path
+
+
+
+
+# def annotate(
+#     model: str,
+#     task_description: str,
+#     lerobot_dataset,
+#     image_key: str = None,
+#     image_key_static_view: str = None,
+#     image_key_wrist_view1: str = None,
+#     annotation_version: str = None,
+#     downsample_to: int = 10,
+#     # context_window: str = None,
+#     ###### for API-based models
+#     key: str = None,
+#     ######
+#     ###### optional, for local models
+#     model_path: str = None,
+#     annotation_subdir = None,
+#     verbose: bool = True,
+# ):
+#     import av
+#     if image_key_static_view is None and image_key_wrist_view1 is None:
+#         raise ValueError(f"Neither image_key_static_view or image_key_wrist_view1 are provided, but model '{model}' does not support multiple views at once. Please provide only one view.")
+#     if not model.lower() in ['sole-r1']:
+#         if image_key_static_view is not None and image_key_wrist_view1 is not None:
+#             raise ValueError(f"Both image_key_static_view and image_key_wrist_view1 are provided, but model '{model}' does not support multiple views at once. Please provide only one view.")
+#     # 
+#     paths = lerobot_dataset.get_episodes_file_paths()
+#     video_paths = [p for p in paths if p.endswith(".mp4")]
+#     video_paths = [os.path.join(lerobot_dataset.root, p) for p in video_paths]
+#     # 
+#     video_frames_static_view = None
+#     video_frames_wrist_view1 = None
+#     # if image_key_static_view is None and image_key_wrist_view1 is None:
+#     #     image_key_static_view = set_observation_name(video_paths)
+#     #     view_type = "external"
+#     #     video_frames_static_view = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_static_view)
+#     if image_key is not None:
+#         if 'wrist' in image_key or 'hand' in image_key:
+#             view_type = 'wrist'
+#             video_frames_wrist_view1 = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key)
+#         else:
+#             view_type = 'static'
+#             video_frames_static_view = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key)
+#     elif not image_key_static_view is None and not image_key_wrist_view1 is None:
+#         view_type = "static+wrist"
+#         video_frames_static_view = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_static_view)
+#         video_frames_wrist_view1 = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_wrist_view1)
+#     elif image_key_static_view is None and not image_key_wrist_view1 is None:
+#         view_type = 'wrist'
+#         video_frames_wrist_view1 = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_wrist_view1)
+#     else:
+#         view_type = 'static'
+#         video_frames_static_view = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=image_key_static_view)
+#     # 
+#     if not model.lower() in ['sole-r1']:
+#         if video_frames_static_view is not None:
+#             video_frames_final_view = video_frames_static_view
+#         elif video_frames_wrist_view1 is not None:
+#             video_frames_final_view = video_frames_wrist_view1  
+#     # 
+#     # if 'wrist' in observation_name or 'hand' in observation_name:
+#     #     view_type = 'wrist'
+#     # else:
+#     #     view_type = 'static'
+#     # 
+#     if annotation_version is None:
+#         annotation_version = "v1"
+#     # 
+#     if annotation_subdir is None:
+#         annotation_subdir = lerobot_dataset.root / "with_reward"
+#     # 
+#     # import av
+#     # frames_by_episode = extract_frames(lerobot_dataset=lerobot_dataset, observation_name=observation_name)
+#     # 
+#     # if verbose:
+#     #     print(f"Extracted frames for {len(frames_by_episode)} episodes with observation name '{observation_name}' and view type '{view_type}'")
+#     # 
+#     rewards = None
+#     output_text = None
+#     success_probs = None
+#     if model.lower() in ["roboreward", "topreward"]:
+#         response = generate(
+#             model=model,  
+#             task_description=task_description, 
+#             # video_frames=frames_by_episode, 
+#             video_frames_static_view=video_frames_static_view,
+#             video_frames_wrist_view1=video_frames_wrist_view1,
+#             view_type=view_type, 
+#             downsample_to=downsample_to,
+#         )
+#     elif model.lower() == "robometer":
+#         response = generate(
+#             model=model,  
+#             task_description=task_description, 
+#             video_frames_static_view=video_frames_static_view,
+#             video_frames_wrist_view1=video_frames_wrist_view1,
+#             view_type=view_type, 
+#             downsample_to=downsample_to,
+#         )
+#     elif model.lower() == "sole-r1":
+#         response = generate(
+#             model=model,  
+#             task_description=task_description, 
+#             video_frames_static_view=video_frames_static_view,
+#             video_frames_wrist_view1=video_frames_wrist_view1,
+#             view_type=view_type, 
+#             downsample_to=downsample_to,
+#         )
+#     elif "gpt" in model.lower() or "gemini" in model.lower():
+#         response = generate(
+#             model=model,  
+#             task_description=task_description, 
+#             video_frames_static_view=video_frames_static_view,
+#             video_frames_wrist_view1=video_frames_wrist_view1,
+#             view_type=view_type, 
+#             downsample_to=downsample_to,
+#             key=key
+#         )
+#     # 
+#     # convert rewards to numpy array and flatten to 1D array of length num_frames
+#     # reward_values = np.concatenate(rewards).astype(np.float32)
+#     reward_values = np.concatenate(response.rewards).astype(np.float32).reshape(-1, 1)
+#     # reward_values = np.random.randn(num_frames, 1).astype(np.float32)
+#     # reward_values.shape
+#     # 
+#     reward_column_name = f"rewards_{model.lower()}_{annotation_version}"
+#     reward_feature_info = {
+#         "dtype": "float32",
+#         "shape": (1,),
+#         "names": None,
+#     }
+#     features = {
+#         reward_column_name: (reward_values, reward_feature_info),
+#     }
+#     # if not output_text is None:
+#     #     output_text_column_name = f"output_text_{model}_{annotation_version}"
+#     # if not success_probs is None:
+#     #     success_probs_column_name = f"success_probs_{model}_{annotation_version}"
+#     # 
+#     from lerobot.datasets.dataset_tools import add_features
+#     num_frames = lerobot_dataset.meta.total_frames
+#     # 
+#     if verbose:
+#         print(f"Adding reward annotations to dataset with {num_frames} frames using feature name '{reward_column_name}'")
+#         print(f"Output directory: {str(annotation_subdir)}")
+#     # 
+#     # if annotation_subdir already exists, read this as current dataset
+#     # if os.path.exists(annotation_subdir):
+#     #     from lerobot.datasets.lerobot_dataset import LeRobotDataset
+#     #     current_dataset = LeRobotDataset(annotation_subdir, video_backend="pyav")
+#     # else:
+#     #     current_dataset = lerobot_dataset
+#     # 
+#     # if os.path.exists('/data/sls/scratch/pschro/.cache/huggingface/lerobot/jackvial/so101_pickplace_recap_merged_v2/with_reward'):
+#     if os.path.exists(annotation_subdir):
+#         # mkdir annotation_subdir_tmp
+#         import shutil
+#         if os.path.exists(f"{annotation_subdir}_tmp"):
+#             shutil.rmtree(f"{annotation_subdir}_tmp")
+#         shutil.move(annotation_subdir, f"{annotation_subdir}_tmp")
+#         # 
+#         from lerobot.datasets.lerobot_dataset import LeRobotDataset
+#         current_dataset = LeRobotDataset(f"{annotation_subdir}_tmp", video_backend="pyav")
+#         # 
+#         import pandas as pd
+#         current_df = pd.read_parquet(os.path.join(current_dataset.root, "data/chunk-000/file-000.parquet"))
+#         # if reward_column_name already exists in current_df, remove it and save the modified parquet file back to disk
+#         if reward_column_name in current_df.columns:
+#             current_df = current_df.drop(columns=[reward_column_name])
+#             current_df.to_parquet(os.path.join(current_dataset.root, "data/chunk-000/file-000.parquet"), index=False)
+#         # 
+#         # f"{annotation_subdir}_tmp" -> annotation_subdir
+#         new_dataset = add_features(
+#             dataset=current_dataset,
+#             features=features,
+#             # output_dir=sample_dataset.root / "with_reward",
+#             output_dir = annotation_subdir
+#             # output_dir = f'{str(annotation_subdir)}_tmp'
+#         )
+#         # move the new dataset to the original with_reward directory
+#         # os.system(f"rm -rf {str(annotation_subdir)}")
+#         # os.system(f"mv {str(annotation_subdir)}_tmp {str(annotation_subdir)}")
+#         # change the new dataset root to the original with_reward directory
+#         new_dataset.root = str(annotation_subdir)
+#     else:
+#         current_dataset = lerobot_dataset
+#         # original dir -> annotation_subdir
+#         new_dataset = add_features(
+#             dataset=current_dataset,
+#             features=features,
+#             output_dir=annotation_subdir,
+#         )
+#     # new_dataset.root
+#     # 
+#     assert reward_values.shape[0] == num_frames, f"Number of reward values {reward_values.shape[0]} does not match number of frames {num_frames}"
+#     assert reward_column_name in new_dataset.meta.features
+#     assert new_dataset.meta.features[reward_column_name] == reward_feature_info
+#     assert len(new_dataset) == num_frames
 
 
 # def shape_to_target(frame, target=384):

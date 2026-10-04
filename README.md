@@ -114,18 +114,18 @@ gcloud config set auth/disable_credentials False
 # pip install -U rewardgen
 from rewardgen import generate, video_plot
 
-video_paths_external_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_paths_static_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 video_paths_wrist_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
 task_description = "Pick up the cube from the table."
 
 # Robometer
-response = generate(model="Robometer",  task_description=task_description, video_paths_external_view=video_paths_external_view,  verbose=False)
+response = generate(model="Robometer",  task_description=task_description, video_paths_static_view=video_paths_static_view,  verbose=False)
 print(response.rewards)
 print(response.success_probs)
 output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-response = generate(model="SOLE-R1",  task_description=task_description, video_paths_external_view=video_paths_external_view, video_paths_wrist_view=video_paths_wrist_view, verbose=False)
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths_static_view=video_paths_static_view, video_paths_wrist_view1=video_paths_wrist_view, verbose=False)
 print(response.rewards)
 print(response.output_text)
 output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
@@ -138,7 +138,7 @@ with open('test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_uns
 output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rewards']}
 
 # Plot
-video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_view_external_path=video_paths_external_view[0], video_view_wrist_path=video_paths_wrist_view[0], task_description=task_description)
+video_plot(outputs=[output_groundtruth, output_sole, output_robometer], plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', video_path_static_view=video_paths_static_view[0], video_path_wrist_view1=video_paths_wrist_view[0], task_description=task_description)
 
 ```
 
@@ -157,7 +157,7 @@ response = generate(
     model="Robometer",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type="external",
+    view_type="static",
     verbose=False
 )
 print(response.rewards)
@@ -177,7 +177,7 @@ response = generate(
     model="SOLE-R1",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external and wrist',
+    view_type='static+wrist',
     verbose=False
 )
 print(response.rewards)
@@ -209,7 +209,7 @@ response = generate(
     model="TOPReward",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external',
+    view_type='static',
     verbose=False
 )
 print(response.rewards)
@@ -228,7 +228,7 @@ response = generate(
     model="RoboReward",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external',
+    view_type='static',
     verbose=False
 )
 print(response.rewards)
@@ -250,7 +250,7 @@ response = generate(
     model="GPT-5",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external', 
+    view_type='static', 
     key=API_KEY, 
     verbose=False
 )
@@ -273,7 +273,7 @@ response = generate(
     model="Gemini-3.1-Pro-Preview",  
     task_description=task_description, 
     video_paths=video_paths, 
-    view_type='external', 
+    view_type='static', 
     key=API_KEY,
     verbose=False
 )
@@ -286,16 +286,16 @@ print(response.output_text)
 
 from rewardgen import generate, video_plot
 
-video_paths_external_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
+video_paths_static_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_external.mp4']
 video_paths_wrist_view = ['test_videos/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37/view_wrist.mp4']
 task_description = "Pick up the cube from the table."
 
 # Robometer
-response = generate(model="Robometer",  task_description=task_description, video_paths_external_view=video_paths_external_view,  verbose=False)
+response = generate(model="Robometer",  task_description=task_description, video_paths_static_view=video_paths_static_view,  verbose=False)
 output_robometer = {"model": "Robometer", "rewards": response.rewards[0]}
 
 # SOLE-R1
-response = generate(model="SOLE-R1",  task_description=task_description, video_paths_external_view=video_paths_external_view, video_paths_wrist_view=video_paths_wrist_view, verbose=False)
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths_static_view=video_paths_static_view, video_paths_wrist_view1=video_paths_wrist_view, verbose=False)
 output_sole = {"model": "SOLE-R1", "rewards": response.rewards[0], "output_text": response.output_text[0]}
 
 # Optional: Ground-truth rewards (available for test videos from sim environments)
@@ -308,8 +308,8 @@ output_groundtruth = {"model": "Ground truth", "rewards": data['ground-truth rew
 video_plot(
     outputs=[output_groundtruth, output_sole, output_robometer], 
     plot_save_path='model_outputs/combined/robosuite/lift/unsuccessful/robosuite_lift_episode_11_unsuccessful_max_reward_37.mp4', 
-    video_view_external_path=video_paths_external_view[0], 
-    video_view_wrist_path=video_paths_wrist_view[0],
+    video_path_static_view=video_paths_static_view[0], 
+    video_path_wrist_view1=video_paths_wrist_view[0],
     task_description=task_description,
     verbose=False
 )
@@ -327,7 +327,7 @@ task_description = "Pick up the cube from the table."
 
 ## REWARD GENERATION
 # SOLE-R1 for all videos
-response = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='external and wrist')
+response = generate(model="SOLE-R1",  task_description=task_description, video_paths=video_paths, view_type='static+wrist')
 
 ## PLOTTING
 plot_save_dir = 'model_outputs/sole-r1/'

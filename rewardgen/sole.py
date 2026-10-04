@@ -38,12 +38,18 @@ min_pixels = 3136
 max_pixels = 12845056
 max_prompt_length = 2048
 
-system_prompt_template = (
+system_prompt_template1 = (
     "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
     + "You first think, in the form of an internal monologue, before providing your final answer. "
     + "Your reasoning process MUST BE enclosed within <think> </think> tags and should include detailed reasoning. "
     + "Your final answer MUST BE enclosed within <answer> </answer> tags and should be a integer (positive or negative) representing current task progress percentage. "
     + "Example output format: <think>[detailed reasoning process]</think><answer>[current task progress]%</answer>"
+)
+
+system_prompt_template2 = (
+    "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
+    + "Your final answer MUST BE enclosed within <answer> </answer> tags and should be a integer (positive or negative) representing current task progress percentage. "
+    + "Example output format: <think>[optional detailed reasoning process]</think><answer>[current task progress]%</answer>"
 )
 
 question_template = "{question}"
@@ -59,9 +65,10 @@ def sole_batch_decode(
     # task_description_text,
     dataset_dict,
     # batch_vlm_image_wrist_view_file_list_list,
-    # batch_vlm_image_external_view_file_list_list,
+    # batch_vlm_image_static_view_file_list_list,
     video_count,
     video_step_count,
+    system_prompt_template,
     image_dir=None,
     video_idx_list=None,
     image_key="image",
@@ -130,9 +137,9 @@ def sole_batch_decode(
                 image = None 
             #
             prompt = (
-                make_conversation(example)
+                make_conversation(example, system_prompt_template)
                 if "image" not in example
-                else make_conversation_image(example)
+                else make_conversation_image(example, system_prompt_template)
             )
             #
             inputs = [
@@ -355,7 +362,7 @@ def load_image(image_input):
 
 
 
-def make_conversation(example):
+def make_conversation(example, system_prompt_template):
     return json.dumps(
         [
             {
@@ -370,7 +377,7 @@ def make_conversation(example):
     )
 
 
-def make_conversation_image(example):
+def make_conversation_image(example, system_prompt_template):
     return json.dumps(
         [
             {
@@ -471,7 +478,7 @@ user_question_template = "Here is an image containing multiple camera views of a
 "The task description is: {task_description}. " + \
 "The task progress for the very first timestep is 0%. The task progress for the previous timestep is {prev_progress}%. Predict the task progress for the current timestep." 
 
-user_question_template_external_view = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
+user_question_template_static_view = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
 "The views from the very first timestep are shown to the left. The views from the previous timestep are shown in the middle. The views from the current timestep are shown to the right. " + \
 "The task description is: {task_description}. " + \
 "The task progress for the very first timestep is 0%. The task progress for the previous timestep is {prev_progress}%. Predict the task progress for the current timestep." 
@@ -489,7 +496,7 @@ user_question_from_zero_template = "Here is an image containing multiple camera 
 "The task description is: {task_description}. " + \
 "The task progress for the very first timestep is 0%. Predict the task progress for the current timestep." 
 
-user_question_from_zero_template_external_view = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
+user_question_from_zero_template_static_view = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
 "The views from the very first timestep are shown to the left. The views from the current timestep are shown to the right. " + \
 "The task description is: {task_description}. " + \
 "The task progress for the very first timestep is 0%. Predict the task progress for the current timestep." 
@@ -521,21 +528,24 @@ def resize_with_padding(img, size=384):
 
 
 
-def create_composite_frame( first_frame_wrist_view, 
-                        first_frame_external_view,
-                        frame0_wrist_view,
-                        frame0_external_view,
-                        frame1_wrist_view,
-                        frame1_external_view,
+def create_composite_frame( first_frame_wrist_view1, 
+                        first_frame_wrist_view2,
+                        first_frame_static_view,
+                        frame0_wrist_view1,
+                        frame0_wrist_view2,
+                        frame0_static_view,
+                        frame1_wrist_view1,
+                        frame1_wrist_view2,
+                        frame1_static_view,
                         use_two_timestep=True,
                            from_zero=False, 
-                           view_type='external and wrist'):
+                           view_type='static+wrist'):
     size = 384
     padding = 5
     # 
-    first_imgs = [first_frame_wrist_view, first_frame_external_view]
-    imgs0 = [frame0_wrist_view, frame0_external_view]
-    imgs2 = [frame1_wrist_view, frame1_external_view]
+    first_imgs = [first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view]
+    imgs0 = [frame0_wrist_view1, frame0_wrist_view2, frame0_static_view]
+    imgs2 = [frame1_wrist_view1, frame1_wrist_view2, frame1_static_view]
     # 
     for i in range(len(first_imgs)):
         if not first_imgs[i] is None:
@@ -546,30 +556,42 @@ def create_composite_frame( first_frame_wrist_view,
             imgs2[i] = resize_with_padding(imgs2[i], size)
     # 
     col_pad = np.zeros((size, padding, 3), dtype=np.uint8)
-    external_view_idx = 1
+    static_view_idx = 2
     if not from_zero:
         if not first_imgs[0] is None:
             bottom_row = np.hstack([first_imgs[0], col_pad, imgs0[0], col_pad, imgs2[0]])
-        if not first_imgs[external_view_idx] is None:
-            top_row = np.hstack([first_imgs[external_view_idx], col_pad, imgs0[external_view_idx], col_pad, imgs2[external_view_idx]])
+        if not first_imgs[1] is None:
+            bottom_row2 = np.hstack([first_imgs[1], col_pad, imgs0[1], col_pad, imgs2[1]])
+        if not first_imgs[static_view_idx] is None:
+            top_row = np.hstack([first_imgs[static_view_idx], col_pad, imgs0[static_view_idx], col_pad, imgs2[static_view_idx]])
     else:
         if not first_imgs[0] is None:
             bottom_row = np.hstack([first_imgs[0], col_pad, imgs2[0]])
-        if not first_imgs[external_view_idx] is None:
-            top_row = np.hstack([first_imgs[external_view_idx], col_pad, imgs2[external_view_idx]])
+        if not first_imgs[1] is None:
+            bottom_row2 = np.hstack([first_imgs[1], col_pad, imgs2[1]])
+        if not first_imgs[static_view_idx] is None:
+            top_row = np.hstack([first_imgs[static_view_idx], col_pad, imgs2[static_view_idx]])
     full_width = top_row.shape[1]
     row_pad = np.zeros((padding, full_width, 3), dtype=np.uint8)
     #
-    if view_type in ['external']:
+    if view_type in ['static']:
         composite = top_row
     elif view_type in ['wrist']:
         composite = bottom_row
-    else:
+    elif view_type in ['static+wrist']:
         if use_two_timestep:
             composite = np.vstack([top_row, row_pad, bottom_row])
         else:
             assert False, "use_two_timestep==False not implemented"
-    # 
+    else:
+        composite = np.vstack([
+            top_row,
+            row_pad,
+            bottom_row,
+            row_pad,
+            bottom_row2
+        ])
+    #  
     return composite
 
 
@@ -620,13 +642,16 @@ def load_model(model_path: str = None, verbose=False):
     # 
     if model_path is None:
         model_path = get_model_dir("sole")
+        processing_class_path = "Qwen/Qwen3-VL-8B-Instruct"
+    else:
+        processing_class_path = model_path
     # 
     global processing_class, processor, llm, sampling_params
     if llm is None:
         # rbm.unload_model()
         if verbose:
             print("Loading SOLE-R1 model and processor...")
-        processing_class = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
+        processing_class = AutoProcessor.from_pretrained(processing_class_path)
         # processor = AutoProcessor.from_pretrained("/data/sls/scratch/pschro/sole/checkpoints/checkpoint-85000")
         # processor = AutoProcessor.from_pretrained("../model_checkpoints/SOLE-R1-8B")
         llm = LLM(
@@ -646,19 +671,19 @@ def load_model(model_path: str = None, verbose=False):
         )
 
 
-processing_class = None
-processor = None
-llm = None
-sampling_params = None
-def unload_model():
-    import gc, torch
+# processing_class = None
+# processor = None
+# llm = None
+# sampling_params = None
+# def unload_model():
+#     import gc, torch
 
-    for name in ["processing_class", "processor", "llm", "sampling_params"]:
-        globals()[name] = None
+#     for name in ["processing_class", "processor", "llm", "sampling_params"]:
+#         globals()[name] = None
 
-    gc.collect()
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+#     gc.collect()
+#     torch.cuda.empty_cache()
+#     torch.cuda.ipc_collect()
 
 ############## new vllm
 
@@ -776,50 +801,52 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
     dataset_dict_list = []
     for video_idx in range(len(videos)):
         # 
-        if view_type_per_video[video_idx] in ['external and wrist']:
+        if view_type_per_video[video_idx] in ['static+wrist']:
             user_question_template_final = user_question_template
             user_question_from_zero_template_final = user_question_from_zero_template
         elif view_type_per_video[video_idx] in ['wrist']:
             user_question_template_final = user_question_template_wrist_view
             user_question_from_zero_template_final = user_question_from_zero_template_wrist_view
         else:
-            user_question_template_final = user_question_template_external_view
-            user_question_from_zero_template_final = user_question_from_zero_template_external_view
+            user_question_template_final = user_question_template_static_view
+            user_question_from_zero_template_final = user_question_from_zero_template_static_view
         # 
         video = videos[video_idx]
         first_frame = video[0]
         first_frame_wrist_view = None
-        first_frame_external_view = None
+        first_frame_static_view = None
         frame_height, frame_width = first_frame.shape[:2]
-        # if view_type_per_video[video_idx] == 'external and wrist' or (view_type_per_video is None and frame_width == 2*frame_height):
-        if view_type_per_video[video_idx] == 'external and wrist':
-            first_frame_external_view = first_frame[:, :first_frame.shape[1]//2, :]
+        # if view_type_per_video[video_idx] == 'static+wrist' or (view_type_per_video is None and frame_width == 2*frame_height):
+        if view_type_per_video[video_idx] == 'static+wrist+wrist':
+            raise ValueError("Two wrist views not supported for 'sole-r1'")
+        elif view_type_per_video[video_idx] == 'static+wrist':
+            first_frame_static_view = first_frame[:, :first_frame.shape[1]//2, :]
             first_frame_wrist_view = first_frame[:, first_frame.shape[1]//2:, :]
         elif view_type_per_video[video_idx] == 'wrist':
             first_frame_wrist_view = first_frame
         else: # assume external view as default
-            first_frame_external_view = first_frame
+            first_frame_static_view = first_frame
         #
         for i in range(1, len(video)):
             prev_frame = video[i-1]
             current_frame = video[i]
-            if view_type_per_video[video_idx] == 'external and wrist':
-                prev_frame_external_view = prev_frame[:, :prev_frame.shape[1]//2, :]
+            if view_type_per_video[video_idx] == 'static+wrist':
+                prev_frame_static_view = prev_frame[:, :prev_frame.shape[1]//2, :]
                 prev_frame_wrist_view = prev_frame[:, prev_frame.shape[1]//2:, :]
-                current_frame_external_view = current_frame[:, :current_frame.shape[1]//2, :]
+                current_frame_static_view = current_frame[:, :current_frame.shape[1]//2, :]
                 current_frame_wrist_view = current_frame[:, current_frame.shape[1]//2:, :]
             elif view_type_per_video[video_idx] == 'wrist':
-                prev_frame_external_view = None
+                prev_frame_static_view = None
                 prev_frame_wrist_view = prev_frame
-                current_frame_external_view = None
+                current_frame_static_view = None
                 current_frame_wrist_view = current_frame  
             else:
-                prev_frame_external_view = prev_frame
+                prev_frame_static_view = prev_frame
                 prev_frame_wrist_view = None
-                current_frame_external_view = current_frame
+                current_frame_static_view = current_frame
                 current_frame_wrist_view = None
             # 
-            composite_frame = create_composite_frame( first_frame_wrist_view, first_frame_external_view, prev_frame_wrist_view, prev_frame_external_view, current_frame_wrist_view, current_frame_external_view, from_zero=False, view_type=view_type_per_video[video_idx])
+            composite_frame = create_composite_frame( first_frame_wrist_view, None, first_frame_static_view, prev_frame_wrist_view, None, prev_frame_static_view, current_frame_wrist_view, None, current_frame_static_view, from_zero=False, view_type=view_type_per_video[video_idx])
             question_final = user_question_template_final.format(task_description=task_description, prev_progress=0)
             dataset_dict_list.append({
                 "image": composite_frame,
@@ -832,7 +859,7 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
     # test_image = load_image(dataset_dict_list[0]['image'])
     # test_image.save('/data/sls/scratch/pschro/sole/test_image.jpg')
     # 
-    text_input_list_batch, text_output_list_batch, example_list_batch, answer_list_batch = sole_batch_decode(processing_class, processor, llm, sampling_params, dataset_dict_list, video_count, video_step_count,verbose=verbose)
+    text_input_list_batch, text_output_list_batch, example_list_batch, answer_list_batch = sole_batch_decode(processing_class, processor, llm, sampling_params, dataset_dict_list, video_count, video_step_count, system_prompt_template1, verbose=verbose)
     # 
     text_output_list_list, text_input_list_list, example_list_list, answer_list_list = get_output_across_videos(video_count, text_input_list_batch, text_output_list_batch, example_list_batch, answer_list_batch )
     # 
@@ -853,6 +880,125 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
     # 
     return valid_answer_list_list, text_output_list_list
 
+
+
+
+# only change with sole_custom is system_prompt changed and model_path is required
+def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False):
+    if model_path is None:
+        raise ValueError("model_path must be specified")
+    # 
+    video_step_counts = [len(d) for d in videos]
+    if len(set(video_step_counts)) != 1:
+        logging.error(
+            f"Episodes in batch have different lengths: {video_step_counts}. Using the minimum length."
+        )
+    # 
+    video_step_count = int(np.min(video_step_counts)) - 1 # assuming 0 for first frame since this will always be 0 progress
+    video_count = len(videos)
+    # 
+    dataset_dict_list = []
+    for video_idx in range(len(videos)):
+        # 
+        if view_type_per_video[video_idx] in ['static+wrist'] or view_type_per_video[video_idx] in ['static+wrist+wrist']:
+            user_question_template_final = user_question_template
+            user_question_from_zero_template_final = user_question_from_zero_template
+        elif view_type_per_video[video_idx] in ['wrist']:
+            user_question_template_final = user_question_template_wrist_view
+            user_question_from_zero_template_final = user_question_from_zero_template_wrist_view
+        else:
+            user_question_template_final = user_question_template_static_view
+            user_question_from_zero_template_final = user_question_from_zero_template_static_view
+        # 
+        video = videos[video_idx]
+        first_frame = video[0]
+        first_frame_wrist_view1 = None
+        first_frame_wrist_view2 = None
+        first_frame_static_view = None
+        frame_height, frame_width = first_frame.shape[:2]
+        # if view_type_per_video[video_idx] == 'static+wrist' or (view_type_per_video is None and frame_width == 2*frame_height):
+        if view_type_per_video[video_idx] == 'static+wrist+wrist':
+            first_frame_wrist_view1 = first_frame[:, :first_frame.shape[1]//3, :]
+            first_frame_static_view = first_frame[:, first_frame.shape[1]//3:2*first_frame.shape[1]//3, :]
+            first_frame_wrist_view2 = first_frame[:, 2*first_frame.shape[1]//3:, :]
+        elif view_type_per_video[video_idx] == 'static+wrist':
+            first_frame_static_view = first_frame[:, :first_frame.shape[1]//2, :]
+            first_frame_wrist_view1 = first_frame[:, first_frame.shape[1]//2:, :]
+        elif view_type_per_video[video_idx] == 'wrist':
+            first_frame_wrist_view1 = first_frame
+        else: # assume external view as default
+            first_frame_static_view = first_frame
+        #
+        for i in range(1, len(video)):
+            prev_frame = video[i-1]
+            current_frame = video[i]
+            if view_type_per_video[video_idx] == 'static+wrist+wrist':
+                prev_frame_wrist_view1 = prev_frame[:, :prev_frame.shape[1]//3, :]
+                prev_frame_static_view = prev_frame[:, prev_frame.shape[1]//3:2*prev_frame.shape[1]//3, :]
+                prev_frame_wrist_view2 = prev_frame[:, 2*prev_frame.shape[1]//3:, :]
+                current_frame_wrist_view1 = current_frame[:, :current_frame.shape[1]//3, :]
+                current_frame_static_view = current_frame[:, current_frame.shape[1]//3:2*current_frame.shape[1]//3, :]
+                current_frame_wrist_view2 = current_frame[:, 2*current_frame.shape[1]//3:, :]
+            elif view_type_per_video[video_idx] == 'static+wrist':
+                prev_frame_static_view = prev_frame[:, :prev_frame.shape[1]//2, :]
+                prev_frame_wrist_view1 = prev_frame[:, prev_frame.shape[1]//2:, :]
+                prev_frame_wrist_view2 = None
+                current_frame_static_view = current_frame[:, :current_frame.shape[1]//2, :]
+                current_frame_wrist_view1 = current_frame[:, current_frame.shape[1]//2:, :]
+                current_frame_wrist_view2 = None
+            elif view_type_per_video[video_idx] == 'wrist':
+                prev_frame_static_view = None
+                prev_frame_wrist_view1 = prev_frame
+                prev_frame_wrist_view2 = None
+                current_frame_static_view = None
+                current_frame_wrist_view1 = current_frame  
+                current_frame_wrist_view2 = None
+            else:
+                prev_frame_static_view = prev_frame
+                prev_frame_wrist_view1 = None
+                prev_frame_wrist_view2 = None
+                current_frame_static_view = current_frame
+                current_frame_wrist_view1 = None
+                current_frame_wrist_view2 = None
+            # 
+            composite_frame = create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view, prev_frame_wrist_view1, prev_frame_wrist_view2, prev_frame_static_view, current_frame_wrist_view1, current_frame_wrist_view2, current_frame_static_view, from_zero=False, view_type=view_type_per_video[video_idx])
+            if debug:
+                # write composite_frame for video_idx step i
+                composite_frame_output_path = f"composite_frame_video{video_idx}_step{i}.jpg"
+                cv2.imwrite(composite_frame_output_path,cv2.cvtColor(composite_frame, cv2.COLOR_RGB2BGR))
+            # 
+            question_final = user_question_template_final.format(task_description=task_description, prev_progress=0)
+            dataset_dict_list.append({
+                "image": composite_frame,
+                "question": question_final
+            })
+    # 
+    load_model(model_path, verbose=verbose)   # ensures model is loaded once
+    global processing_class, processor, llm, sampling_params
+    # 
+    # test_image = load_image(dataset_dict_list[0]['image'])
+    # test_image.save('/data/sls/scratch/pschro/sole/test_image.jpg')
+    # 
+    text_input_list_batch, text_output_list_batch, example_list_batch, answer_list_batch = sole_batch_decode(processing_class, processor, llm, sampling_params, dataset_dict_list, video_count, video_step_count, system_prompt_template2, verbose=verbose)
+    # 
+    text_output_list_list, text_input_list_list, example_list_list, answer_list_list = get_output_across_videos(video_count, text_input_list_batch, text_output_list_batch, example_list_batch, answer_list_batch )
+    # 
+    # 
+    valid_answer_list_list = []
+    for episode in answer_list_list:
+        valid_answer_list = []  
+        for ans in episode:
+            try:
+                progress = int(ans)
+            except (ValueError, TypeError):
+                if len(valid_answer_list) > 0:
+                    progress = valid_answer_list[-1]
+                else:
+                    progress = 0
+            valid_answer_list.append(progress)
+        valid_answer_list_list.append(valid_answer_list)
+    # 
+    return valid_answer_list_list, text_output_list_list
 
 
 

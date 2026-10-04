@@ -184,8 +184,6 @@ def get_final_video_frames(
     elif video_frames_static_view is not None or video_frames_wrist_view1 is not None or video_frames_wrist_view2 is not None:
         if video_frames_wrist_view1 is None and video_frames_wrist_view2 is not None:
             raise ValueError("video_frames_wrist_view1 is None while video_frames_wrist_view2 is not None")
-        elif video_frames_static_view is None and video_frames_wrist_view1 is not None and video_frames_wrist_view2 is not None:
-            raise ValueError("video_frames_static_view is None while video_frames_wrist_view1 and video_frames_wrist_view2 are not None")
         elif video_frames_static_view is not None and video_frames_wrist_view1 is not None and video_frames_wrist_view2 is not None:
             if single_video:
                 video_frames_static_view = [video_frames_static_view]
@@ -244,10 +242,9 @@ def get_final_video_frames(
     else:
         if video_paths_wrist_view1 is None and video_paths_wrist_view2 is not None:
             raise ValueError("video_paths_wrist_view1 is None while video_paths_wrist_view2 is not None")
-        elif video_paths_static_view is None and video_paths_wrist_view1 is not None and video_paths_wrist_view2 is not None:
-            raise ValueError("video_paths_static_view is None while video_paths_wrist_view1 and video_paths_wrist_view2 are not None")
         elif video_paths is None and video_paths_static_view is not None and video_paths_wrist_view1 is not None and video_paths_wrist_view2 is not None:
-                # concatenate static+wrist view videos side by side and use that as input to the model
+            videos = []
+            for video_idx in range(len(video_paths_static_view)):
                 (
                     frames_static,
                     sampled_indices,

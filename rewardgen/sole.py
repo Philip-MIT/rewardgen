@@ -46,11 +46,13 @@ system_prompt_template1 = (
     + "Example output format: <think>[detailed reasoning process]</think><answer>[current task progress]%</answer>"
 )
 
-system_prompt_template2 = (
-    "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
-    + "Your final answer MUST BE enclosed within <answer> </answer> tags and should be a integer (positive or negative) representing current task progress percentage. "
-    + "Example output format: <think>[optional detailed reasoning process]</think><answer>[current task progress]%</answer>"
-)
+# system_prompt_template2 = (
+#     "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
+#     + "Your final answer MUST BE enclosed within <answer> </answer> tags and should be a integer (positive or negative) representing current task progress percentage. "
+#     + "Example output format: <think>[optional detailed reasoning process]</think><answer>[current task progress]%</answer>"
+# )
+
+system_prompt_template2 = system_prompt_template1
 
 question_template = "{question}"
 problem_key = "question"
@@ -637,38 +639,38 @@ def create_composite_frame( first_frame_wrist_view1,
 temperature_ = 1.0
 
 
-def load_model(model_path: str = None, verbose=False):
-    from rewardgen.utils.model_utils import get_model_dir
-    # 
-    if model_path is None:
-        model_path = get_model_dir("sole")
-        processing_class_path = "Qwen/Qwen3-VL-8B-Instruct"
-    else:
-        processing_class_path = model_path
-    # 
-    global processing_class, processor, llm, sampling_params
-    if llm is None:
-        # rbm.unload_model()
-        if verbose:
-            print("Loading SOLE-R1 model and processor...")
-        processing_class = AutoProcessor.from_pretrained(processing_class_path)
-        # processor = AutoProcessor.from_pretrained("/data/sls/scratch/pschro/sole/checkpoints/checkpoint-85000")
-        # processor = AutoProcessor.from_pretrained("../model_checkpoints/SOLE-R1-8B")
-        llm = LLM(
-            # model="/data/sls/scratch/pschro/sole/checkpoints/checkpoint-85000",
-            # model="../model_checkpoints/SOLE-R1-8B",
-            model=model_path,
-            gpu_memory_utilization=0.95,
-            max_model_len=16384,
-            enable_prefix_caching=True,
-        )
-        processor = AutoProcessor.from_pretrained(model_path)
-        sampling_params = SamplingParams(
-            temperature=temperature_,
-            top_p=0.9,
-            top_k=50,
-            max_tokens=200,
-        )
+# def load_model(model_path: str = None, verbose=False):
+#     from rewardgen.utils.model_utils import get_model_dir
+#     # 
+#     if model_path is None:
+#         model_path = get_model_dir("sole")
+#         processing_class_path = "Qwen/Qwen3-VL-8B-Instruct"
+#     else:
+#         processing_class_path = model_path
+#     # 
+#     global processing_class, processor, llm, sampling_params
+#     if llm is None:
+#         # rbm.unload_model()
+#         if verbose:
+#             print("Loading SOLE-R1 model and processor...")
+#         processing_class = AutoProcessor.from_pretrained(processing_class_path)
+#         # processor = AutoProcessor.from_pretrained("/data/sls/scratch/pschro/sole/checkpoints/checkpoint-85000")
+#         # processor = AutoProcessor.from_pretrained("../model_checkpoints/SOLE-R1-8B")
+#         llm = LLM(
+#             # model="/data/sls/scratch/pschro/sole/checkpoints/checkpoint-85000",
+#             # model="../model_checkpoints/SOLE-R1-8B",
+#             model=model_path,
+#             gpu_memory_utilization=0.95,
+#             max_model_len=163840,
+#             enable_prefix_caching=True,
+#         )
+#         processor = AutoProcessor.from_pretrained(model_path)
+#         sampling_params = SamplingParams(
+#             temperature=temperature_,
+#             top_p=0.9,
+#             top_k=50,
+#             max_tokens=200,
+#         )
 
 
 # processing_class = None
@@ -767,7 +769,7 @@ def load_model(
         trust_remote_code=True,
         dtype="bfloat16",
         gpu_memory_utilization=0.90,
-        max_model_len=16384,
+        max_model_len=163840,
         enable_prefix_caching=True,
         # Each SOLE request contains one composite image.
         limit_mm_per_prompt={"image": 1},
@@ -788,7 +790,7 @@ def load_model(
 
 # load_model()
 
-def sole(videos, task_description, view_type_per_video=None, context_window = ['current', 'previous', 'first'], model_path=None, verbose=False):
+def sole(videos, task_description, view_type_per_video=None, context_window = ['current', 'previous', 'first'], model_path=None, verbose=False, temperature=0.0):
     video_step_counts = [len(d) for d in videos]
     if len(set(video_step_counts)) != 1:
         logging.error(
@@ -853,7 +855,7 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
                 "question": question_final
             })
     # 
-    load_model(model_path, verbose=verbose)   # ensures model is loaded once
+    load_model(model_path, verbose=verbose, temperature=temperature)   # ensures model is loaded once
     global processing_class, processor, llm, sampling_params
     # 
     # test_image = load_image(dataset_dict_list[0]['image'])
@@ -973,7 +975,7 @@ def sole_custom(videos, task_description, model_path, view_type_per_video=None, 
                 "question": question_final
             })
     # 
-    load_model(model_path, verbose=verbose)   # ensures model is loaded once
+    load_model(model_path, verbose=verbose, temperature=temperature)   # ensures model is loaded once
     global processing_class, processor, llm, sampling_params
     # 
     # test_image = load_image(dataset_dict_list[0]['image'])

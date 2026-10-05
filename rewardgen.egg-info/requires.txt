@@ -11,5 +11,6 @@ trl
 imageio
 matplotlib
 av<16.0.0,>=15.0.0
+imageio_ffmpeg
 openai
 google-genai

@@ -1,5 +1,3 @@
-############### core.py
-
 import os
 import numpy as np
 import cv2
@@ -13,6 +11,8 @@ import torch
 
 from types import SimpleNamespace
 import copy
+
+import imageio_ffmpeg
 
 
 # def load_video_frames(video_path):
@@ -29,9 +29,6 @@ import copy
 #     cap.release()
 #     return frames
 
-import cv2
-import numpy as np
-
 
 
 def load_video_frames(
@@ -39,6 +36,7 @@ def load_video_frames(
     max_frames: int = 100,
     frame_indices=None,
     return_metadata: bool = False,
+    keep_as_bgr: bool = False,
 ):
     """
     Load at most `max_frames` uniformly sampled frames.
@@ -80,7 +78,8 @@ def load_video_frames(
         ret, frame = cap.read()
         if not ret:
             continue
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if not keep_as_bgr:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frames.append(frame)
         valid_indices.append(int(index))
     cap.release()
@@ -283,7 +282,7 @@ def get_final_video_frames(
                 if sampled_indices != wrist1_sampled_indices or sampled_indices != wrist2_sampled_indices:
                     raise ValueError(
                         f"Sampled indices for external-view video do not match those for wrist-view videos for "
-                        f"video_idx {video_idx}"
+                       f"video_idx {video_idx}"
                     )
                 frames_combined = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
                 videos.append(frames_combined)
@@ -440,6 +439,7 @@ def generate(
     model_path: str = None,
     ######
     debug=False,
+    temperature: float = 0.0,
 ):
     # 
     global CURRENT_MODEL
@@ -626,7 +626,7 @@ def generate(
             output_text.append(output_text_video_i)
         # 
     elif 'sole' in model.lower(): 
-        from rewardgen.sole import sole
+        from rewardgen.sole import sole, sole_custom
         # from sole import load_model
         # load_model()
         # rewards, output_text = sole(downsampled_videos, task_description, view_type_per_video=view_type_per_video, context_window=['current', 'previous', 'first'], model_path=model_path)
@@ -653,9 +653,9 @@ def generate(
             downsampled_videos_chunk = downsampled_videos_chunks_max_5[chunk_idx]
             view_type_per_video_chunk = view_type_per_video_chunks_max_5[chunk_idx]
             if model.lower() == 'sole-r1':
-                rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose)
+                rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose, temperature=temperature)
             else:
-                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose, debug=debug)
+                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, verbose=verbose, debug=debug, temperature=temperature)
             rewards += rewards_chunk
             output_text += output_text_chunk
         # 
@@ -866,6 +866,8 @@ def video_plot(outputs, plot_save_path: str,
                 video_frames: list | np.ndarray | None = None,
                 video_frames_static_view: list | np.ndarray | None = None,
                 video_frames_wrist_view1: list | np.ndarray | None = None,
+                video_frames_wrist_view2: list | np.ndarray | None = None,
+                max_loaded_frames: int = None,
                 view_type: str = None,
                 task_description: str =None, 
                 show_all_frames: bool = False,
@@ -894,6 +896,12 @@ def video_plot(outputs, plot_save_path: str,
     if isinstance(video_frames_wrist_view2, np.ndarray):
         video_frames_wrist_view2 = list(video_frames_wrist_view2)
     # 
+    if max_loaded_frames is None:
+        max_loaded_frames = len(outputs[0]['rewards'])
+    # 
+    if max_loaded_frames != len(outputs[0]['rewards']):
+        raise ValueError(f"max_loaded_frames {max_loaded_frames} does not match the number of rewards in the output {len(outputs[0]['rewards'])}")
+    # 
     outputs = copy.deepcopy(outputs)
     for output in outputs:
         if output is None:
@@ -912,16 +920,16 @@ def video_plot(outputs, plot_save_path: str,
         if video_path_wrist_view1 is None and video_path_wrist_view2 is not None:
             raise ValueError("video_path_wrist_view1 cannot be None if video_path_wrist_view2 is provided")
         elif video_path is None and video_path_static_view is not None and video_path_wrist_view1 is not None and video_path_wrist_view2 is not None:
-            frames_static = load_video_frames(video_path_static_view)
-            frames_wrist1 = load_video_frames(video_path_wrist_view1)
-            frames_wrist2 = load_video_frames(video_path_wrist_view2)
+            frames_static = load_video_frames(video_path_static_view, max_frames=max_loaded_frames, keep_as_bgr=True)
+            frames_wrist1 = load_video_frames(video_path_wrist_view1, max_frames=max_loaded_frames, keep_as_bgr=True)
+            frames_wrist2 = load_video_frames(video_path_wrist_view2, max_frames=max_loaded_frames, keep_as_bgr=True)
             if not (len(frames_static) == len(frames_wrist1) == len(frames_wrist2)):
                 raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view1 video {len(frames_wrist1)} or wrist view2 video {len(frames_wrist2)}")
             frame_list = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
             view_type = 'static+wrist+wrist'
         elif video_path is None and video_path_static_view is not None and video_path_wrist_view1 is not None:
-            frames_static = load_video_frames(video_path_static_view)
-            frames_wrist = load_video_frames(video_path_wrist_view1)
+            frames_static = load_video_frames(video_path_static_view, max_frames=max_loaded_frames, keep_as_bgr=True)
+            frames_wrist = load_video_frames(video_path_wrist_view1, max_frames=max_loaded_frames, keep_as_bgr=True)
             if not len(frames_static) == len(frames_wrist):
                 raise ValueError(f"Number of frames in external view video {len(frames_static)} does not match number of frames in wrist view video {len(frames_wrist)}")
             frame_list = [np.concatenate((frames_static[i], frames_wrist[i]), axis=1) for i in range(len(frames_static))]
@@ -940,7 +948,7 @@ def video_plot(outputs, plot_save_path: str,
             elif video_path is None:
                 raise ValueError("video_path cannot be None if video_path_static_view and video_path_wrist_view1 are both not provided (and video_frames is also None)")
             # 
-            frame_list = load_video_frames(video_path)
+            frame_list = load_video_frames(video_path, max_frames=max_loaded_frames, keep_as_bgr=True)
     else:
         frame_list = video_frames
     # Validate that the number of rewards matches the number of frames for each output
@@ -1279,12 +1287,20 @@ def video_plot(outputs, plot_save_path: str,
         out.release()
     plt.close(fig)   
     del canvas 
-    os.system(f"ffmpeg -y -i {plot_save_path} -c:v libx264 -pix_fmt yuv420p {plot_save_path.replace('.avi', '.mp4')}")
+    # os.system(f"ffmpeg -y -i {plot_save_path} -c:v libx264 -pix_fmt yuv420p {plot_save_path.replace('.avi', '.mp4')}")
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    output_path = plot_save_path.replace(".avi", ".mp4")
+    os.system(
+        f'"{ffmpeg_exe}" -y -i "{plot_save_path}" '
+        f'-vf "colorchannelmixer=rr=0:rb=1:br=1:bb=0" '
+        f'-c:v libx264 -pix_fmt yuv420p "{output_path}"'
+    )
     os.remove(plot_save_path)
 
 
 
-def extract_annotation(lerobot_dataset, progress_file, downsample_to=None, reward_column_name: str = "progress_sparse",):
+
+def extract_anotation(lerobot_dataset, progress_file, downsample_to=None, reward_column_name: str = "progress_sparse",):
     # 
     import pandas as pd
     # parquet_path = os.path.join(lerobot_dataset.root, "data/chunk-000/file-000.parquet")
@@ -1526,7 +1542,7 @@ def annotate(
         episode_end = int(episode["dataset_to_index"])
         episode_length = episode_end - episode_start
         # 
-        # interpolate back to the full set of rewards
+      # interpolate back to the full set of rewards
         local_downsample_idx_list = [x-downsample_idx_list_list[episode_idx][0] for x in downsample_idx_list_list[episode_idx]]
         target_indices = np.arange(episode_end-episode_start)
         x = np.asarray(local_downsample_idx_list, dtype=float)
@@ -1796,7 +1812,7 @@ def annotate(
 # def shape_to_target(frame, target=768):
 #     frame_height, frame_width = frame.shape[:2]
 #     # Always scale so height = target
-#     scale = target / frame_height
+#    cale = target / frame_height
 #     new_width = int(frame_width * scale)
 #     frame = cv2.resize(frame, (new_width, target), interpolation=cv2.INTER_LINEAR)
 #     # Optional: pad width if still smaller than target

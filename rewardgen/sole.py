@@ -32,11 +32,15 @@ import os
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 from vllm import LLM, SamplingParams
 
+from vllm.lora.request import LoRARequest
 
+lora_request = None
 
 min_pixels = 3136
-max_pixels = 12845056
-max_prompt_length = 2048
+# max_pixels = 12845056
+max_pixels = 2957312 # matches SFT
+# max_prompt_length = 2048*4
+max_prompt_length = None
 
 system_prompt_template1 = (
     "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
@@ -117,23 +121,40 @@ def sole_batch_decode(
             example_list.append(example)
             # 
             if image_key in example:
-                image = load_image(example[image_key])
-                # image = self.load_image(image_path)
-                # image = load_image(image_path)
-                # 
-                width, height = image.size
-                # min_pixels = self.script_args.min_pixels
-                # max_pixels = self.script_args.max_pixels
-                # min_pixels = 3136
-                # max_pixels = 12845056
-                resized_height, resized_width = smart_resize(
-                    height,
-                    width,
-                    factor=28,
-                    min_pixels=min_pixels,
-                    max_pixels=max_pixels,
-                )
-                image = image.resize((resized_width, resized_height))
+                if False:
+                    image = load_image(example[image_key])
+                    # image = self.load_image(image_path)
+                    # image = load_image(image_path)
+                    # 
+                    width, height = image.size
+                    # min_pixels = self.script_args.min_pixels
+                    # max_pixels = self.script_args.max_pixels
+                    # min_pixels = 3136
+                    # max_pixels = 12845056
+                    resized_height, resized_width = smart_resize(
+                        height,
+                        width,
+                        factor=28,
+                        min_pixels=min_pixels,
+                        max_pixels=max_pixels,
+                    )
+                    image = image.resize((resized_width, resized_height))
+                if True:
+                    image_processor = processing_class.image_processor
+                    resize_factor = (
+                        image_processor.patch_size * image_processor.merge_size
+                    )
+                    resized_height, resized_width = smart_resize(
+                        height,
+                        width,
+                        factor=resize_factor,
+                        min_pixels=min_pixels,
+                        max_pixels=max_pixels,
+                    )
+                    image = image.resize(
+                        (resized_width, resized_height),
+                        resample=PIL.Image.Resampling.BICUBIC,
+                    )
             #
             else:
                 image = None 
@@ -192,17 +213,17 @@ def sole_batch_decode(
                     for k, v in prompt_inputs.items()
                 }
                 # if self.max_prompt_length is not None:
-                if max_prompt_length is not None:
-                    # batched_inputs["input_ids"].shape
-                    # torch.Size([1, 1025])
-                    # batched_inputs["attention_mask"].shape
-                    # torch.Size([1, 1025])
-                    batched_inputs["input_ids"] = batched_inputs["input_ids"][
-                        :, -max_prompt_length:
-                    ]
-                    batched_inputs["attention_mask"] = batched_inputs["attention_mask"][
-                        :, -max_prompt_length:
-                    ]
+                # if max_prompt_length is not None:
+                #     # batched_inputs["input_ids"].shape
+                #     # torch.Size([1, 1025])
+                #     # batched_inputs["attention_mask"].shape
+                #     # torch.Size([1, 1025])
+                #     batched_inputs["input_ids"] = batched_inputs["input_ids"][
+                #         :, -max_prompt_length:
+                #     ]
+                #     batched_inputs["attention_mask"] = batched_inputs["attention_mask"][
+                #         :, -max_prompt_length:
+                #     ]
                 #
                 inputs_vllm = []
                 for image_data, messages in zip(images, prompts):
@@ -273,6 +294,7 @@ def sole_batch_decode(
             outputs = llm.generate(
                 current_video_idx_batch_input,
                 sampling_params=sampling_params,
+                lora_request=lora_request,
                 use_tqdm=False,
             )
             # len(outputs)
@@ -292,6 +314,11 @@ def sole_batch_decode(
         ]
         #
         text_output = processor.batch_decode(completion_ids, skip_special_tokens=True)
+        # 
+        for i, request in enumerate(current_video_idx_batch_input):
+            if request["prompt"].endswith("<think>\n"):
+                if not text_output[i].lstrip().startswith("<think>"):
+                    text_output[i] = "<think>\n" + text_output[i]
         #
         # print('')
         # print(checkpoint_path, lev_idx, lev_video_idx)
@@ -529,19 +556,7 @@ def resize_with_padding(img, size=384):
     return output
 
 
-
-def create_composite_frame( first_frame_wrist_view1, 
-                        first_frame_wrist_view2,
-                        first_frame_static_view,
-                        frame0_wrist_view1,
-                        frame0_wrist_view2,
-                        frame0_static_view,
-                        frame1_wrist_view1,
-                        frame1_wrist_view2,
-                        frame1_static_view,
-                        use_two_timestep=True,
-                           from_zero=False, 
-                           view_type='static+wrist'):
+def create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view, frame0_wrist_view1, frame0_wrist_view2, frame0_static_view, frame1_wrist_view1, frame1_wrist_view2, frame1_static_view, use_two_timestep=True, from_zero=False, view_type='static+wrist'):
     size = 384
     padding = 5
     # 
@@ -702,6 +717,7 @@ def unload_model():
     global llm
     global sampling_params
     global _loaded_model_path
+    global lora_request
 
     import gc
     import torch
@@ -714,6 +730,7 @@ def unload_model():
     processor = None
     sampling_params = None
     _loaded_model_path = None
+    lora_request = None
 
     if old_llm is not None:
         # Clear cached multimodal embeddings before destroying the engine.
@@ -731,59 +748,94 @@ def unload_model():
         torch.cuda.ipc_collect()
 
 
+
 def load_model(
     model_path: str = None,
     verbose: bool = False,
+    temperature: float = 0.0,
 ):
-    global processing_class
-    global processor
-    global llm
-    global sampling_params
-    global _loaded_model_path
+    global processing_class, processor, llm
+    global sampling_params, _loaded_model_path, lora_request
 
     from rewardgen.utils.model_utils import get_model_dir
 
     if model_path is None:
         model_path = get_model_dir("sole-r1")
 
+    model_path = str(model_path)
+
     if llm is not None and _loaded_model_path == model_path:
+        sampling_params.temperature = temperature
         return
 
     if llm is not None:
         unload_model()
 
-    if verbose:
-        print(f"Loading SOLE-R1 from {model_path} with vLLM...")
+    adapter_config_path = Path(model_path) / "adapter_config.json"
 
-    # Use the checkpoint's own tokenizer and chat template. Keeping two
-    # independently loaded processors can produce subtle prompt differences.
+    if adapter_config_path.is_file():
+        with open(adapter_config_path) as f:
+            adapter_config = json.load(f)
+
+        adapter_path = model_path
+        base_model_path = os.environ.get(
+            "BASE_MODEL_PATH",
+            adapter_config["base_model_name_or_path"],
+        )
+        lora_rank = int(adapter_config.get("r", 32))
+
+        if verbose:
+            print(f"Loading base model: {base_model_path}")
+            print(f"Loading LoRA adapter: {adapter_path}")
+    else:
+        adapter_path = None
+        base_model_path = model_path
+        lora_rank = None
+
+        if verbose:
+            print(f"Loading full model: {base_model_path}")
+
     processor = AutoProcessor.from_pretrained(
-        model_path,
+        base_model_path,
         trust_remote_code=True,
     )
     processing_class = processor
 
-    llm = LLM(
-        model=model_path,
-        tokenizer=model_path,
+    llm_kwargs = dict(
+        model=base_model_path,
+        tokenizer=base_model_path,
         trust_remote_code=True,
         dtype="bfloat16",
+        tensor_parallel_size=1,
         gpu_memory_utilization=0.90,
-        max_model_len=163840,
+        max_model_len=8192,
         enable_prefix_caching=True,
-        # Each SOLE request contains one composite image.
         limit_mm_per_prompt={"image": 1},
     )
 
+    if adapter_path is not None:
+        llm_kwargs.update(
+            enable_lora=True,
+            max_lora_rank=max(32, lora_rank),
+            max_loras=1,
+        )
+
+    llm = LLM(**llm_kwargs)
+
+    lora_request = (
+        LoRARequest("sole_adapter", 1, adapter_path)
+        if adapter_path is not None
+        else None
+    )
+
     sampling_params = SamplingParams(
-        temperature=1.0,
+        temperature=temperature,
         top_p=0.9,
         top_k=50,
-        max_tokens=200,
+        max_tokens=1000,
     )
 
     _loaded_model_path = model_path
-
 
 
 
@@ -886,7 +938,7 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
 
 
 # only change with sole_custom is system_prompt changed and model_path is required
-def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False):
+def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False, temperature=0.0):
     if model_path is None:
         raise ValueError("model_path must be specified")
     # 

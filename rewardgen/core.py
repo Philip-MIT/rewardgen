@@ -30,7 +30,6 @@ import imageio_ffmpeg
 #     return frames
 
 
-
 def load_video_frames(
     video_path: str,
     max_frames: int = 100,
@@ -282,7 +281,7 @@ def get_final_video_frames(
                 if sampled_indices != wrist1_sampled_indices or sampled_indices != wrist2_sampled_indices:
                     raise ValueError(
                         f"Sampled indices for external-view video do not match those for wrist-view videos for "
-                       f"video_idx {video_idx}"
+                        f"video_idx {video_idx}"
                     )
                 frames_combined = [np.concatenate((frames_wrist1[i], frames_static[i], frames_wrist2[i]), axis=1) for i in range(len(frames_static))]
                 videos.append(frames_combined)
@@ -440,6 +439,8 @@ def generate(
     ######
     debug=False,
     temperature: float = 0.0,
+    return_frames = False,
+    use_6frame: bool = False,
 ):
     # 
     global CURRENT_MODEL
@@ -655,7 +656,7 @@ def generate(
             if model.lower() == 'sole-r1':
                 rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose, temperature=temperature)
             else:
-                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, verbose=verbose, debug=debug, temperature=temperature)
+                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, verbose=verbose, debug=debug, temperature=temperature, use_6frame=use_6frame)
             rewards += rewards_chunk
             output_text += output_text_chunk
         # 
@@ -797,6 +798,9 @@ def generate(
             # return full_rewards[0]
             response = SimpleNamespace(rewards=full_rewards[0], output_text=None, success_probs=None, success=None)
     # 
+    if return_frames:
+        response.frames = downsampled_videos
+    # 
     return response
 
 
@@ -858,6 +862,8 @@ def resize_and_pad_to_target(
     return frame
 
 
+
+
 def video_plot(outputs, plot_save_path: str, 
                video_path=None, 
                 video_path_static_view: str = None, 
@@ -872,7 +878,7 @@ def video_plot(outputs, plot_save_path: str,
                 task_description: str =None, 
                 show_all_frames: bool = False,
                 fps=2, wrap_width=26, font_scale=1, font_height=30, text_thickness=2, line_type=2, show_output_text=True, cfg=None, env_rew_lab='Ground-truth reward', 
-                save_json = True, verbose=False, write_json = True, x_axis_label='Timestep', y_axis_label='Predicted task progress (%)'):
+                save_json = True, verbose=False, write_json = True, x_axis_label='Timestep', y_axis_label='Predicted task progress (%)', return_frames=False):
     # 
     ############ EXTRACT VIDEO FRAMES FOR ALL VIDEOS AS A LIST OF LISTS    
     # 
@@ -1296,11 +1302,13 @@ def video_plot(outputs, plot_save_path: str,
         f'-c:v libx264 -pix_fmt yuv420p "{output_path}"'
     )
     os.remove(plot_save_path)
+    if return_frames:
+        return frame_list
 
 
 
 
-def extract_anotation(lerobot_dataset, progress_file, downsample_to=None, reward_column_name: str = "progress_sparse",):
+def extract_annotation(lerobot_dataset, progress_file, downsample_to=None, reward_column_name: str = "progress_sparse",):
     # 
     import pandas as pd
     # parquet_path = os.path.join(lerobot_dataset.root, "data/chunk-000/file-000.parquet")
@@ -1542,7 +1550,7 @@ def annotate(
         episode_end = int(episode["dataset_to_index"])
         episode_length = episode_end - episode_start
         # 
-      # interpolate back to the full set of rewards
+        # interpolate back to the full set of rewards
         local_downsample_idx_list = [x-downsample_idx_list_list[episode_idx][0] for x in downsample_idx_list_list[episode_idx]]
         target_indices = np.arange(episode_end-episode_start)
         x = np.asarray(local_downsample_idx_list, dtype=float)
@@ -1812,7 +1820,7 @@ def annotate(
 # def shape_to_target(frame, target=768):
 #     frame_height, frame_width = frame.shape[:2]
 #     # Always scale so height = target
-#    cale = target / frame_height
+#     scale = target / frame_height
 #     new_width = int(frame_width * scale)
 #     frame = cv2.resize(frame, (new_width, target), interpolation=cv2.INTER_LINEAR)
 #     # Optional: pad width if still smaller than target

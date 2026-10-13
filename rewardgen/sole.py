@@ -50,6 +50,7 @@ system_prompt_template1 = (
     + "Example output format: <think>[detailed reasoning process]</think><answer>[current task progress]%</answer>"
 )
 
+
 # system_prompt_template2 = (
 #     "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
 #     + "Your final answer MUST BE enclosed within <answer> </answer> tags and should be a integer (positive or negative) representing current task progress percentage. "
@@ -121,12 +122,12 @@ def sole_batch_decode(
             example_list.append(example)
             # 
             if image_key in example:
+                image = load_image(example[image_key])
+                # image = self.load_image(image_path)
+                # image = load_image(image_path)
+                # 
+                width, height = image.size
                 if False:
-                    image = load_image(example[image_key])
-                    # image = self.load_image(image_path)
-                    # image = load_image(image_path)
-                    # 
-                    width, height = image.size
                     # min_pixels = self.script_args.min_pixels
                     # max_pixels = self.script_args.max_pixels
                     # min_pixels = 3136
@@ -538,6 +539,26 @@ user_question_from_zero_template_wrist_view = "Here is an image containing multi
 "The task progress for the very first timestep is 0%. Predict the task progress for the current timestep." 
 
 
+user_question_template2 = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
+"The views on the top are from a static camera. The views on the bottom are from the robot's wrist cameras. " + \
+"The views from the very first timestep are shown to the left. The views from the previous timestep are shown in the middle. The views from the current timestep are shown to the right. " + \
+"The task description is: {task_description}. " + \
+"The task progress for the very first timestep is 0%. The task progress for the previous timestep is {prev_progress}%. Predict the task progress for the current timestep." 
+
+user_question_template2_6frame = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
+"The views on the top are from a static camera. The views on the bottom are from the robot's wrist cameras. " + \
+"The views from the very first timestep are shown to the left. The views from the four previous timesteps are shown in the middle. The views from the current timestep are shown to the right. " + \
+"The task description is: {task_description}. " + \
+"The task progress for the very first timestep is 0%. The task progress for the most recent previous timestep is {prev_progress}%. Predict the task progress for the current timestep." 
+
+
+user_question_from_zero_template2 = "Here is an image containing multiple camera views of a robot attempting to complete a task. " + \
+"The views on the top are from a static camera. The views on the bottom are from the robot's wrist camera. " + \
+"The views from the very first timestep are shown to the left. The views from the current timestep are shown to the right. " + \
+"The task description is: {task_description}. " + \
+"The task progress for the very first timestep is 0%. Predict the task progress for the current timestep." 
+
+
 
 def resize_with_padding(img, size=384):
     h, w = img.shape[:2]
@@ -609,6 +630,57 @@ def create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, fi
             bottom_row2
         ])
     #  
+    return composite
+
+def create_composite_6frame( first_frame, prev_prev_prev_prev_frame, prev_prev_prev_frame, prev_prev_frame, prev_frame,  current_frame, third_view=False, external_view_idx=1, use_two_timestep=True, from_zero=False, original_frame_width=384, original_view_count=4):
+    size = 224
+    padding = 5
+    # 
+    first_imgs = extract_subimages(first_frame, original_frame_width, original_view_count)
+    imgs_neg3 = extract_subimages(prev_prev_prev_prev_frame, original_frame_width, original_view_count)
+    imgs_neg2 = extract_subimages(prev_prev_prev_frame, original_frame_width, original_view_count)
+    imgs_neg1 = extract_subimages(prev_prev_frame, original_frame_width, original_view_count)
+    imgs0 = extract_subimages(prev_frame, original_frame_width, original_view_count)
+    imgs2 = extract_subimages(current_frame, original_frame_width, original_view_count)
+    # 
+    for i in range(len(first_imgs)):
+        first_imgs[i] = resize_with_padding(first_imgs[i], size)
+        imgs0[i] = resize_with_padding(imgs0[i], size)
+        imgs2[i] = resize_with_padding(imgs2[i], size)
+        imgs_neg3[i] = resize_with_padding(imgs_neg3[i], size)
+        imgs_neg2[i] = resize_with_padding(imgs_neg2[i], size)
+        imgs_neg1[i] = resize_with_padding(imgs_neg1[i], size)
+    # 
+    # Create vertical (column) padding between frames
+    col_pad = np.zeros((size, padding, 3), dtype=np.uint8)
+    # Create top (prev_frame) and bottom (current_frame) image composites
+    # first_row = np.hstack([first_imgs[0], col_pad, imgs0[0], col_pad, imgs2[0]])
+    if not from_zero:
+        bottom_row = np.hstack([first_imgs[0], col_pad, imgs_neg3[0], col_pad, imgs_neg2[0], col_pad, imgs_neg1[0], col_pad, imgs0[0], col_pad, imgs2[0]])
+        top_row = np.hstack([first_imgs[external_view_idx], col_pad, imgs_neg3[external_view_idx], col_pad, imgs_neg2[external_view_idx], col_pad, imgs_neg1[external_view_idx], col_pad, imgs0[external_view_idx], col_pad, imgs2[external_view_idx]])
+        if third_view:
+            bottom_bottom_row = np.hstack([first_imgs[2], col_pad, imgs_neg3[2], col_pad, imgs_neg2[2], col_pad, imgs_neg1[2], col_pad, imgs0[2], col_pad, imgs2[2]])
+    else:
+        bottom_row = np.hstack([first_imgs[0], col_pad, imgs2[0]])
+        top_row = np.hstack([first_imgs[external_view_idx], col_pad, imgs2[external_view_idx]])
+        if third_view:
+            bottom_bottom_row = np.hstack([first_imgs[2], col_pad, imgs2[2], col_pad, imgs2[2]])
+    # Create horizontal (row) padding between timesteps
+    # row_pad = np.zeros((padding, size, 3), dtype=np.uint8)
+    full_width = top_row.shape[1]
+    row_pad = np.zeros((padding, full_width, 3), dtype=np.uint8)
+    # Now stack horizontally instead of vertically
+    if use_two_timestep:
+        composite = np.vstack([top_row, row_pad, bottom_row])
+        if third_view:
+            composite = np.vstack([top_row, row_pad, bottom_row, row_pad, bottom_bottom_row])
+    else:
+        # composite = top_row
+        assert False, "use_two_timestep==False not implemented"
+    # 
+    # this changed eggplant from purple to green for PnPCounterToMicrowave_demo_1909_lev6.2-two-NA
+    # composite = random_color_shift(composite)
+    # 
     return composite
 
 
@@ -932,13 +1004,13 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
             valid_answer_list.append(progress)
         valid_answer_list_list.append(valid_answer_list)
     # 
-    return valid_answer_list_list, text_output_list_list
+    retrn valid_answer_list_list, text_output_list_list
 
 
 
 
 # only change with sole_custom is system_prompt changed and model_path is required
-def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False, temperature=0.0):
+def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False, temperature=0.0, use_6frame=False):
     if model_path is None:
         raise ValueError("model_path must be specified")
     # 
@@ -954,15 +1026,23 @@ def sole_custom(videos, task_description, model_path, view_type_per_video=None, 
     dataset_dict_list = []
     for video_idx in range(len(videos)):
         # 
-        if view_type_per_video[video_idx] in ['static+wrist'] or view_type_per_video[video_idx] in ['static+wrist+wrist']:
-            user_question_template_final = user_question_template
-            user_question_from_zero_template_final = user_question_from_zero_template
-        elif view_type_per_video[video_idx] in ['wrist']:
-            user_question_template_final = user_question_template_wrist_view
-            user_question_from_zero_template_final = user_question_from_zero_template_wrist_view
+        if not use_6frame:
+            if view_type_per_video[video_idx] in ['static+wrist'] or view_type_per_video[video_idx] in ['static+wrist+wrist']:
+                user_question_template_final = user_question_template2
+                user_question_from_zero_template_final = user_question_from_zero_template2
+            elif view_type_per_video[video_idx] in ['wrist']:
+                user_question_template_final = user_question_template_wrist_view
+                user_question_from_zero_template_final = user_question_from_zero_template_wrist_view
+            else:
+                user_question_template_final = user_question_template_static_view
+                user_question_from_zero_template_final = user_question_from_zero_template_static_view
         else:
-            user_question_template_final = user_question_template_static_view
-            user_question_from_zero_template_final = user_question_from_zero_template_static_view
+            if view_type_per_video[video_idx] in ['static+wrist'] or view_type_per_video[video_idx] in ['static+wrist+wrist']:
+                user_question_template_final = user_question_template2_6frame
+                user_question_from_zero_template_final = user_question_from_zero_template2
+            else:
+                # raise not implemented error for other view types
+                raise NotImplementedError(f"6-frame template not implemented for view type {view_type_per_video[video_idx]}")
         # 
         video = videos[video_idx]
         first_frame = video[0]
@@ -986,36 +1066,65 @@ def sole_custom(videos, task_description, model_path, view_type_per_video=None, 
         for i in range(1, len(video)):
             prev_frame = video[i-1]
             current_frame = video[i]
-            if view_type_per_video[video_idx] == 'static+wrist+wrist':
-                prev_frame_wrist_view1 = prev_frame[:, :prev_frame.shape[1]//3, :]
-                prev_frame_static_view = prev_frame[:, prev_frame.shape[1]//3:2*prev_frame.shape[1]//3, :]
-                prev_frame_wrist_view2 = prev_frame[:, 2*prev_frame.shape[1]//3:, :]
-                current_frame_wrist_view1 = current_frame[:, :current_frame.shape[1]//3, :]
-                current_frame_static_view = current_frame[:, current_frame.shape[1]//3:2*current_frame.shape[1]//3, :]
-                current_frame_wrist_view2 = current_frame[:, 2*current_frame.shape[1]//3:, :]
-            elif view_type_per_video[video_idx] == 'static+wrist':
-                prev_frame_static_view = prev_frame[:, :prev_frame.shape[1]//2, :]
-                prev_frame_wrist_view1 = prev_frame[:, prev_frame.shape[1]//2:, :]
-                prev_frame_wrist_view2 = None
-                current_frame_static_view = current_frame[:, :current_frame.shape[1]//2, :]
-                current_frame_wrist_view1 = current_frame[:, current_frame.shape[1]//2:, :]
-                current_frame_wrist_view2 = None
-            elif view_type_per_video[video_idx] == 'wrist':
-                prev_frame_static_view = None
-                prev_frame_wrist_view1 = prev_frame
-                prev_frame_wrist_view2 = None
-                current_frame_static_view = None
-                current_frame_wrist_view1 = current_frame  
-                current_frame_wrist_view2 = None
+            if not use_6frame:
+                if view_type_per_video[video_idx] == 'static+wrist+wrist':
+                    prev_frame_wrist_view1 = prev_frame[:, :prev_frame.shape[1]//3, :]
+                    prev_frame_static_view = prev_frame[:, prev_frame.shape[1]//3:2*prev_frame.shape[1]//3, :]
+                    prev_frame_wrist_view2 = prev_frame[:, 2*prev_frame.shape[1]//3:, :]
+                    current_frame_wrist_view1 = current_frame[:, :current_frame.shape[1]//3, :]
+                    current_frame_static_view = current_frame[:, current_frame.shape[1]//3:2*current_frame.shape[1]//3, :]
+                    current_frame_wrist_view2 = current_frame[:, 2*current_frame.shape[1]//3:, :]
+                elif view_type_per_video[video_idx] == 'static+wrist':
+                    prev_frame_static_view = prev_frame[:, :prev_frame.shape[1]//2, :]
+                    prev_frame_wrist_view1 = prev_frame[:, prev_frame.shape[1]//2:, :]
+                    prev_frame_wrist_view2 = None
+                    current_frame_static_view = current_frame[:, :current_frame.shape[1]//2, :]
+                    current_frame_wrist_view1 = current_frame[:, current_frame.shape[1]//2:, :]
+                    current_frame_wrist_view2 = None
+                elif view_type_per_video[video_idx] == 'wrist':
+                    prev_frame_static_view = None
+                    prev_frame_wrist_view1 = prev_frame
+                    prev_frame_wrist_view2 = None
+                    current_frame_static_view = None
+                    current_frame_wrist_view1 = current_frame  
+                    current_frame_wrist_view2 = None
+                else:
+                    prev_frame_static_view = prev_frame
+                    prev_frame_wrist_view1 = None
+                    prev_frame_wrist_view2 = None
+                    current_frame_static_view = current_frame
+                    current_frame_wrist_view1 = None
+                    current_frame_wrist_view2 = None
+                # 
+                composite_frame = create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view, prev_frame_wrist_view1, prev_frame_wrist_view2, prev_frame_static_view, current_frame_wrist_view1, current_frame_wrist_view2, current_frame_static_view, from_zero=False, view_type=view_type_per_video[video_idx])
             else:
-                prev_frame_static_view = prev_frame
-                prev_frame_wrist_view1 = None
-                prev_frame_wrist_view2 = None
-                current_frame_static_view = current_frame
-                current_frame_wrist_view1 = None
-                current_frame_wrist_view2 = None
+                if i == 1:
+                    prev_prev_frame = video[i - 1]
+                    prev_prev_prev_frame = video[i - 1]
+                    prev_prev_prev_prev_frame = video[i - 1]
+                elif i == 2:
+                    prev_prev_frame = video[i - 2]
+                    prev_prev_prev_frame = video[i - 2]
+                    prev_prev_prev_prev_frame = video[i - 2]
+                elif i == 3:
+                    prev_prev_frame = video[i - 2]
+                    prev_prev_prev_frame = video[i - 3]
+                    prev_prev_prev_prev_frame = video[i - 3]
+                elif i == 4:
+                    prev_prev_frame = video[i - 2]
+                    prev_prev_prev_frame = video[i - 3]
+                    prev_prev_prev_prev_frame = video[i - 4]
+                else:
+                    prev_frame_lin_idx = np.linspace(0, i - 1, 5, dtype=int)
+                    prev_prev_i = prev_frame_lin_idx[3]
+                    prev_prev_prev_i = prev_frame_lin_idx[2]
+                    prev_prev_prev_prev_i = prev_frame_lin_idx[1]
+                    prev_prev_frame = video[prev_prev_i]
+                    prev_prev_prev_frame = video[prev_prev_prev_i]
+                    prev_prev_prev_prev_frame = video[prev_prev_prev_prev_i]
+                # 
+                composite_frame = create_composite_6frame(first_frame, prev_prev_prev_prev_frame, prev_prev_prev_frame, prev_prev_frame, prev_frame, current_frame, third_view=True, original_frame_width=224, original_view_count=3)
             # 
-            composite_frame = create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view, prev_frame_wrist_view1, prev_frame_wrist_view2, prev_frame_static_view, current_frame_wrist_view1, current_frame_wrist_view2, current_frame_static_view, from_zero=False, view_type=view_type_per_video[video_idx])
             if debug:
                 # write composite_frame for video_idx step i
                 composite_frame_output_path = f"composite_frame_video{video_idx}_step{i}.jpg"

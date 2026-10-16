@@ -441,6 +441,7 @@ def generate(
     temperature: float = 0.0,
     return_frames = False,
     use_6frame: bool = False,
+    rescale_factor: float = 1.0,
 ):
     # 
     global CURRENT_MODEL
@@ -656,7 +657,7 @@ def generate(
             if model.lower() == 'sole-r1':
                 rewards_chunk, output_text_chunk = sole(downsampled_videos_chunk, task_description, view_type_per_video=view_type_per_video_chunk, model_path=model_path, verbose=verbose, temperature=temperature)
             else:
-                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, verbose=verbose, debug=debug, temperature=temperature, use_6frame=use_6frame)
+                rewards_chunk, output_text_chunk = sole_custom(downsampled_videos_chunk, task_description, model_path, view_type_per_video=view_type_per_video_chunk, verbose=verbose, debug=debug, temperature=temperature, use_6frame=use_6frame, rescale_factor=rescale_factor)
             rewards += rewards_chunk
             output_text += output_text_chunk
         # 
@@ -798,6 +799,40 @@ def generate(
             # return full_rewards[0]
             response = SimpleNamespace(rewards=full_rewards[0], output_text=None, success_probs=None, success=None)
     # 
+    response.meta = SimpleNamespace(
+        # Always list-per-video. Each index is a zero-based position
+        # in the exact video supplied to RewardGen.
+        model_frame_indices=[
+            [int(index) for index in indices]
+            for indices in original_downsample_idx_list_list
+        ],
+    )
+    response.model_rewards = [
+        np.asarray(
+            video_rewards,
+            dtype=np.float64,
+        ).tolist()
+        for video_rewards in rewards
+    ]
+    response.model_success_probs = (
+        None
+        if success_probs is None
+        else [
+            np.asarray(
+                video_probabilities,
+                dtype=np.float64,
+            ).tolist()
+            for video_probabilities in success_probs
+        ]
+    )
+    response.model_output_text = (
+        None
+        if output_text is None
+        else [
+            list(video_output_text)
+            for video_output_text in output_text
+        ]
+    )
     if return_frames:
         response.frames = downsampled_videos
     # 

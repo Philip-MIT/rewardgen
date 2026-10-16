@@ -38,9 +38,11 @@ lora_request = None
 
 min_pixels = 3136
 # max_pixels = 12845056
-max_pixels = 2957312 # matches SFT
+# max_pixels = 2957312 # matches SFT
 # max_prompt_length = 2048*4
 max_prompt_length = None
+
+
 
 system_prompt_template1 = (
     "You are an expert roboticist with the goal of predicting task progress percentages given frames from a video of a robot attempting to complete a task. "
@@ -149,8 +151,8 @@ def sole_batch_decode(
                         height,
                         width,
                         factor=resize_factor,
-                        min_pixels=min_pixels,
-                        max_pixels=max_pixels,
+                        min_pixels=processing_class.image_processor.size["shortest_edge"],
+                        max_pixels=processing_class.image_processor.size["longest_edge"],
                     )
                     image = image.resize(
                         (resized_width, resized_height),
@@ -632,6 +634,12 @@ def create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, fi
     #  
     return composite
 
+
+def extract_subimages(frame, size=384, view_count=4):
+    # Assume frame is a horizontal concat of 4 images
+    return [frame[:, i*size:(i+1)*size] for i in range(view_count)]
+
+
 def create_composite_6frame( first_frame, prev_prev_prev_prev_frame, prev_prev_prev_frame, prev_prev_frame, prev_frame,  current_frame, third_view=False, external_view_idx=1, use_two_timestep=True, from_zero=False, original_frame_width=384, original_view_count=4):
     size = 224
     padding = 5
@@ -1004,13 +1012,13 @@ def sole(videos, task_description, view_type_per_video=None, context_window = ['
             valid_answer_list.append(progress)
         valid_answer_list_list.append(valid_answer_list)
     # 
-    retrn valid_answer_list_list, text_output_list_list
+    return valid_answer_list_list, text_output_list_list
 
 
 
 
 # only change with sole_custom is system_prompt changed and model_path is required
-def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False, temperature=0.0, use_6frame=False):
+def sole_custom(videos, task_description, model_path, view_type_per_video=None, context_window = ['current', 'previous', 'first'], verbose=False, debug=False, temperature=0.0, use_6frame=False, rescale_factor=1.0):
     if model_path is None:
         raise ValueError("model_path must be specified")
     # 
@@ -1096,6 +1104,7 @@ def sole_custom(videos, task_description, model_path, view_type_per_video=None, 
                     current_frame_wrist_view1 = None
                     current_frame_wrist_view2 = None
                 # 
+                if not rescale_factor == 1.0:
                 composite_frame = create_composite_frame( first_frame_wrist_view1, first_frame_wrist_view2, first_frame_static_view, prev_frame_wrist_view1, prev_frame_wrist_view2, prev_frame_static_view, current_frame_wrist_view1, current_frame_wrist_view2, current_frame_static_view, from_zero=False, view_type=view_type_per_video[video_idx])
             else:
                 if i == 1:
@@ -1129,6 +1138,19 @@ def sole_custom(videos, task_description, model_path, view_type_per_video=None, 
                 # write composite_frame for video_idx step i
                 composite_frame_output_path = f"composite_frame_video{video_idx}_step{i}.jpg"
                 cv2.imwrite(composite_frame_output_path,cv2.cvtColor(composite_frame, cv2.COLOR_RGB2BGR))
+            # 
+            if rescale_factor != 1.0:
+                if not np.isfinite(rescale_factor) or rescale_factor <= 0:
+                    raise ValueError("rescale_factor must be positive and finite")
+                h, w = composite_frame.shape[:2]
+                composite_frame = cv2.resize(
+                    composite_frame,
+                    (
+                        max(1, round(w * rescale_factor)),
+                        max(1, round(h * rescale_factor)),
+                    ),
+                    interpolation=cv2.INTER_LANCZOS4,
+                )
             # 
             question_final = user_question_template_final.format(task_description=task_description, prev_progress=0)
             dataset_dict_list.append({
